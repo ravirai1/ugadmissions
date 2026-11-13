@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\Payment;
 use App\Notifications\PaymentReceived;
 use App\Services\FeeCalculator;
+use App\Services\ScrutinyService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -147,6 +148,7 @@ class PaymentService
 
         $payment->refresh();
         if ($fulfilled) {
+            app(ScrutinyService::class)->sync($payment->application); // now in the departments' scrutiny queues
             $payment->application->user->notify(new PaymentReceived($payment));
         }
 

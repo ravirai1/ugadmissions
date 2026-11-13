@@ -17,6 +17,7 @@ final class DocumentTypes
         'st_certificate' => ['ST certificate (for CST)', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'category_certificate' => ['Category certificate (OBC-NCL / SC / ST / EWS)', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'pwbd_certificate' => ['Disability certificate (UDID)', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
+        'other' => ['Other document', ['jpg', 'jpeg', 'png', 'pdf'], 2048], // query replies only
     ];
 
     public const MIMES = [

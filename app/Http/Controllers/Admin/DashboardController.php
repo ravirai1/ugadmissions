@@ -42,6 +42,8 @@ class DashboardController extends Controller
                 ],
                 'pwbdWise' => $this->stats->pwbdWise($scope),
                 'daily' => $this->stats->daily(),
+                'scrutiny' => collect(['academic', 'religious'])->mapWithKeys(fn ($t) => [$t => \App\Models\Scrutiny::where('type', $t)
+                    ->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->all()])->all(),
                 'payments' => [
                     'byPurpose' => $this->stats->payments(),
                     'today' => (float) Payment::where('status', Payment::SUCCESS)->whereDate('paid_at', today())->sum('amount'),

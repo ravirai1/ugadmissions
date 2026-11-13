@@ -22,6 +22,13 @@
         @endforeach
     </div>
 
+    @foreach ($openQueries as $q)
+        <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+            <div><strong>Action needed:</strong> the scrutiny team has a query about your application ({{ $q->created_at->timezone('Asia/Kolkata')->format('d M') }}).</div>
+            <a href="{{ route('applicant.query', $q) }}" class="btn btn-sm btn-primary ms-auto">View and reply</a>
+        </div>
+    @endforeach
+
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="p-4 border h-100">
@@ -53,6 +60,15 @@
         </div>
         <div class="col-lg-4">
             <div class="p-4 bg-light h-100">
+                @if ($scrutinies->isNotEmpty())
+                    <h5 class="mb-3">Scrutiny status</h5>
+                    <ul class="small mb-4 ps-3">
+                        @foreach ($scrutinies as $sc)
+                            <li>{{ $sc->type === 'academic' ? $sc->applicationCourse?->course->name : 'Religious (Christian category)' }}:
+                                <strong>{{ $sc->status === 'pending' ? 'Under scrutiny' : $sc->statusLabel() }}</strong>@if ($sc->status === 'rejected' && $sc->remarks)<br><span class="text-muted">{{ $sc->remarks }}</span>@endif</li>
+                        @endforeach
+                    </ul>
+                @endif
                 <h5 class="mb-3">Notices</h5>
                 <p class="small text-muted mb-0">No notices yet.</p>
             </div>

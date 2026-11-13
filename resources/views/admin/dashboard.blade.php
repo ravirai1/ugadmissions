@@ -43,6 +43,21 @@
     </div>
 
     <div class="row">
+        @foreach (['academic' => 'Academic scrutiny', 'religious' => 'Religious scrutiny'] as $t => $title)
+            <div class="col-md-6">
+                <div class="card card-round">
+                    <div class="card-body py-3 d-flex flex-wrap align-items-center gap-3">
+                        <a href="{{ route('admin.scrutiny.index', $t) }}" class="fw-bold">{{ $title }}</a>
+                        @foreach (\App\Models\Scrutiny::STATUSES as $k => $label)
+                            <span class="small">{{ $label }}: <strong>{{ $scrutiny[$t][$k] ?? 0 }}</strong></span>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="row">
         <div class="col-xl-7">
             <div class="card card-round">
                 <div class="card-body">

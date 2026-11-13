@@ -23,6 +23,8 @@ class DashboardController extends Controller
             'stages' => $stages,
             'currentStage' => $app?->isPaid() ? 3 : ($app?->isSubmitted() ? 2 : 1),
             'payments' => $app ? $app->payments()->get() : collect(),
+            'openQueries' => $app ? $app->queries()->where('status', 'open')->get() : collect(),
+            'scrutinies' => $app ? $app->scrutinies()->with('applicationCourse.course')->get() : collect(),
             'progress' => (int) round(min($done, $total) / $total * 100),
         ]);
     }

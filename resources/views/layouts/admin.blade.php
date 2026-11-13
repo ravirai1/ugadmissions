@@ -45,6 +45,12 @@
                         {!! $section('Admissions') !!}
                         {!! $item('admin.applications.index', 'fa-file-alt', 'Applications', 'admin.applications.*') !!}
                     @endif
+                    @if ($me->hasRole($R::ADMIN, $R::DEPARTMENT))
+                        <li class="nav-item {{ request()->routeIs('admin.scrutiny.*') && request()->route('type') !== 'religious' ? 'active' : '' }}"><a href="{{ route('admin.scrutiny.index', 'academic') }}"><i class="fas fa-clipboard-check"></i><p>Academic Scrutiny</p></a></li>
+                    @endif
+                    @if ($me->hasRole($R::ADMIN, $R::RELIGIOUS))
+                        <li class="nav-item {{ request()->route('type') === 'religious' ? 'active' : '' }}"><a href="{{ route('admin.scrutiny.index', 'religious') }}"><i class="fas fa-church"></i><p>Religious Scrutiny</p></a></li>
+                    @endif
                     @if ($me->hasRole($R::ADMIN, $R::ACCOUNTS))
                         {!! $section('Accounts') !!}
                         {!! $item('admin.payments.index', 'fa-rupee-sign', 'Payments', 'admin.payments.*') !!}

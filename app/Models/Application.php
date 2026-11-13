@@ -64,6 +64,48 @@ class Application extends Model
         return $this->hasMany(ApplicationDocument::class);
     }
 
+    public function scrutinies(): HasMany
+    {
+        return $this->hasMany(Scrutiny::class);
+    }
+
+    public function queries(): HasMany
+    {
+        return $this->hasMany(ScrutinyQuery::class)->latest('id');
+    }
+
+    public function religiousScrutiny(): ?Scrutiny
+    {
+        return $this->scrutinies->firstWhere('type', Scrutiny::RELIGIOUS);
+    }
+
+    /**
+     * Religious part is settled: not a Christian-category applicant, or the religious team has decided.
+     * A rejection moves the applicant to General (default rule; confirm with the College).
+     */
+    public function religiousCleared(): bool
+    {
+        return ! $this->isChristian() || ($this->religiousScrutiny()?->isDecided() ?? false);
+    }
+
+    /** Category used for merit lists: Christian applicants not accepted by religious scrutiny compete as General (UR). */
+    public function meritCategory(): ?string
+    {
+        if ($this->isChristian() && $this->religiousScrutiny()?->status === Scrutiny::REJECTED) {
+            return 'UR';
+        }
+
+        return $this->isChristian() ? $this->christian_subcategory : $this->category_code;
+    }
+
+    /** Eligible for the interview of a course: paid, academic scrutiny approved for it, religious part settled. */
+    public function eligibleForInterview(ApplicationCourse $choice): bool
+    {
+        $academic = $this->scrutinies->first(fn ($s) => $s->type === Scrutiny::ACADEMIC && $s->application_course_id === $choice->id);
+
+        return $this->isPaid() && $choice->payment_status === 'paid' && $academic?->status === Scrutiny::APPROVED && $this->religiousCleared();
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class)->latest('id');
