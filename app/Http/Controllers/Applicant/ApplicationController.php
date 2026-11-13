@@ -14,6 +14,7 @@ use App\Models\State;
 use App\Models\Subject;
 use App\Notifications\ApplicationSubmitted;
 use App\Services\CourseSelection;
+use App\Services\DocumentStore;
 use App\Services\Eligibility;
 use App\Support\ApplicationSteps;
 use App\Support\DocumentTypes;
@@ -451,41 +452,8 @@ class ApplicationController extends Controller
         abort_unless(in_array($type, $app->requiredDocumentTypes(), true), 404);
         abort_unless($this->canOpen($app, 'documents'), 403);
 
-        $request->validate([
-            'file' => [
-                'required', 'file',
-                'mimes:'.implode(',', DocumentTypes::exts($type)),
-                'mimetypes:'.implode(',', DocumentTypes::mimes($type)),
-                'max:'.DocumentTypes::maxKb($type),
-            ],
-        ], [
-            'file.mimes' => 'Allowed formats: '.strtoupper(implode(', ', DocumentTypes::exts($type))).'.',
-            'file.max' => 'File is too large. Maximum '.DocumentTypes::maxKb($type).' KB.',
-        ]);
-
-        $file = $request->file('file');
-        $mime = $file->getMimeType(); // detected from file contents
-        if (str_starts_with($mime, 'image/') && @getimagesize($file->getRealPath()) === false) {
-            throw ValidationException::withMessages(['file' => 'The image file appears to be damaged.']);
-        }
-        if ($mime === 'application/pdf' && ! str_starts_with((string) file_get_contents($file->getRealPath(), false, null, 0, 5), '%PDF-')) {
-            throw ValidationException::withMessages(['file' => 'The PDF file appears to be damaged.']);
-        }
-
-        $ext = array_search($mime, DocumentTypes::MIMES, true) ?: $file->extension();
-        $path = $file->storeAs('applications/'.$app->id, $type.'-'.bin2hex(random_bytes(8)).'.'.$ext, 'local');
-
-        DB::transaction(function () use ($app, $type, $file, $path, $mime) {
-            $app->allDocuments()->where('type', $type)->update(['is_current' => false]);
-            $app->allDocuments()->create([
-                'type' => $type,
-                'path' => $path,
-                'original_name' => mb_substr(basename($file->getClientOriginalName()), 0, 200),
-                'mime' => $mime,
-                'size' => $file->getSize(),
-                'sha256' => hash_file('sha256', $file->getRealPath()),
-            ]);
-        });
+        $request->validate(['file' => DocumentStore::rules($type)], DocumentStore::messages('file', $type));
+        app(DocumentStore::class)->store($app, $request->file('file'), $type);
 
         return back()->with('status', DocumentTypes::label($type).' uploaded.');
     }

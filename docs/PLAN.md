@@ -46,10 +46,14 @@ Also in PR #2: legal pages (privacy, terms, refund, disclaimer), Christian stude
 - Dashboard (admin, accounts): registrations, in progress, submitted, paid, residence, PwBD; course-wise (female, Christian, JMC preference, residence, added later), category-wise with Christian sub-categories, gender, state-wise three ways, PwBD by disability, payments by purpose, last 14 days; switch between fee-paid and all submitted; one-click Excel workbook of every table
 - Department dashboard: their queue size and course-wise counts
 
-### 4b – Scrutiny and queries
-- Academic scrutiny (department-wise, live queue once paid): academic mapping table (CUET ↔ Class 12 ↔ course rule), document checklist, approve/reject/query, locking
-- Religious scrutiny (Christian categories): religious section and certificates only
-- Queries: reviewer raises query → applicant email → reply via secure upload link (and optionally by email reply via IMAP) → attached to profile with history → back in queue; reminders
+### 4b ✅ (PR #5) – Scrutiny and queries
+- Paid applications enter the queues automatically: one academic record per paid course (that course's department) and one religious record for Christian categories. Courses added after payment join the queue when paid.
+- Academic scrutiny (department faculty): mapping table of CUET papers counted ↔ matching Class 12 subject and marks, live DU rule check, unmatched papers flagged, checklist, verified CUET total (used for the 85% part), approve/reject with reasons
+- Religious scrutiny: baptism and church details, certificates, checklist; "not accepted" treats the applicant as General (UR) for merit (default rule, to confirm)
+- Decisions lock for the department; admin can change or reopen. Queues refresh every minute and show "Reply received" first.
+- Queries: reviewer asks for documents → applicant emailed a secure link (only a hash is stored, 7 days, one use) and sees it on the dashboard → uploads replace the document on the profile (older versions kept) → back in the queue flagged. Daily reminders (up to 3) with a fresh link.
+- Eligible for interview = paid + academic approved for that course + religious part settled
+- Optional later: replies by email (IMAP) once the College gives a mailbox
 
 ### 4c – Helpdesk, print, notices
 - Helpdesk: floating help button; chat with admin (logged in) and query form with name, email, mobile, screenshot; inbox, assignment, quick replies, reports

@@ -47,6 +47,8 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('verified')->prefix('applicant')->name('applicant.')->group(function () {
         Route::get('/dashboard', [Applicant\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/queries/{query}', [Applicant\QueryController::class, 'show'])->name('query')->whereNumber('query');
+        Route::post('/queries/{query}', [Applicant\QueryController::class, 'reply'])->middleware('throttle:app-upload')->name('query.reply')->whereNumber('query');
     });
 
     Route::middleware('verified')->prefix('application')->name('application.')->controller(Applicant\ApplicationController::class)->group(function () {
@@ -69,6 +71,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/{payment}/receipt', 'receipt')->name('receipt')->whereNumber('payment');
     });
 });
+
+/*
+| Scrutiny query reply from the emailed secure link (no login needed; the token is checked against its stored hash)
+*/
+Route::get('/query/{query}/{token}', [Applicant\QueryController::class, 'showByLink'])->middleware('throttle:verify')->name('query.show')->whereNumber('query');
+Route::post('/query/{query}/{token}', [Applicant\QueryController::class, 'replyByLink'])->middleware('throttle:app-upload')->name('query.reply')->whereNumber('query');
 
 /*
 | SBI ePay callbacks (CSRF-exempt; trusted only after decrypting and checking with SBI's status API)
@@ -114,6 +122,17 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
                 Route::get('/export', 'export')->name('export');
                 Route::get('/{application}', 'show')->name('show')->whereNumber('application');
                 Route::get('/documents/{document}', 'document')->name('document')->whereNumber('document');
+            });
+
+        // Scrutiny: academic (department faculty, by department) and religious
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::DEPARTMENT.','.Roles::RELIGIOUS)->prefix('scrutiny')->name('scrutiny.')
+            ->controller(Admin\ScrutinyController::class)->group(function () {
+                Route::get('/{type}', 'index')->name('index')->whereIn('type', ['academic', 'religious']);
+                Route::get('/item/{scrutiny}', 'show')->name('show')->whereNumber('scrutiny');
+                Route::post('/item/{scrutiny}/decide', 'decide')->name('decide')->whereNumber('scrutiny');
+                Route::post('/item/{scrutiny}/query', 'query')->name('query')->whereNumber('scrutiny');
+                Route::post('/queries/{query}/close', 'closeQuery')->name('query.close')->whereNumber('query');
+                Route::post('/item/{scrutiny}/reopen', 'reopen')->middleware('role:'.Roles::ADMIN)->name('reopen')->whereNumber('scrutiny');
             });
 
         // Master data and fees (admin)
