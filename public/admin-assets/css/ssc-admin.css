@@ -7,3 +7,11 @@
 .admin-auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f7fb; }
 .admin-auth .card { width: 100%; max-width: 420px; border-top: 4px solid #9b1c1c; }
 .captcha-q { font-weight: 600; background: #f3f4f6; padding: .3rem .7rem; border-radius: .25rem; user-select: none; }
+/* Application details (shared partial with the applicant preview) */
+.app-details .form-section { background: #fff; border: 1px solid #e5e7eb; border-radius: .4rem; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.app-details .form-section h5 { font-size: 1rem; font-weight: 700; color: #1f2a44; border-bottom: 1px solid #eef0f4; padding-bottom: .4rem; margin-bottom: .8rem; }
+.app-details .preview-table th { width: 32%; background: #fafafa; font-weight: 600; }
+.app-details .doc-thumb { width: 110px; height: 130px; object-fit: cover; border: 1px solid #ddd; }
+.table.stat-table > tbody > tr > td, .table.stat-table > thead > tr > th, .table.stat-table > tr > td { padding: .35rem .5rem !important; height: auto !important; font-size: .85rem; }
+.table.stat-table td:first-child { min-width: 170px; }
+.stat-bar { height: 6px; background: #9b1c1c; border-radius: 3px; }

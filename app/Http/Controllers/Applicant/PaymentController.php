@@ -46,7 +46,7 @@ class PaymentController extends Controller
             'app' => $app,
             'fee' => $app->isPaid() ? null : $this->fees->forApplication($app),
             'payments' => $app->payments()->get(),
-            'fees' => config('payment.fees'),
+            'fees' => FeeCalculator::fees(),
             'waitMinutes' => config('payment.status_check_after_minutes'),
         ]);
     }
@@ -78,7 +78,7 @@ class PaymentController extends Controller
             'scores' => $scores,
             'subjects' => Subject::all()->keyBy('id'),
             'female' => $app->isFemale(),
-            'fee' => config('payment.fees.course_after_payment'),
+            'fee' => FeeCalculator::fees()['course_after_payment'],
         ]);
     }
 

@@ -14,6 +14,11 @@ class Department extends Model
         return ['is_active' => 'boolean'];
     }
 
+    public function courses(): HasMany
+    {
+        return $this->hasMany(Course::class);
+    }
+
     public function admins(): HasMany
     {
         return $this->hasMany(Admin::class);

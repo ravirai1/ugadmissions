@@ -1,4 +1,4 @@
-@php($me = auth('admin')->user())
+@php $me = auth('admin')->user(); @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,11 +36,27 @@
                     <li class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                         <a href="{{ route('admin.dashboard') }}"><i class="fas fa-home"></i><p>Dashboard</p></a>
                     </li>
-                    @if ($me->hasRole(\App\Support\Roles::ADMIN, \App\Support\Roles::ACCOUNTS))
-                        <li class="nav-section"><span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span><h4 class="text-section">Accounts</h4></li>
-                        <li class="nav-item {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
-                            <a href="{{ route('admin.payments.index') }}"><i class="fas fa-rupee-sign"></i><p>Payments</p></a>
-                        </li>
+                    @php
+                        $R = \App\Support\Roles::class;
+                        $section = fn ($t) => '<li class="nav-section"><span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span><h4 class="text-section">'.e($t).'</h4></li>';
+                        $item = fn ($route, $icon, $label, $active = null) => '<li class="nav-item '.(request()->routeIs($active ?? $route) ? 'active' : '').'"><a href="'.e(route($route)).'"><i class="fas '.$icon.'"></i><p>'.e($label).'</p></a></li>';
+                    @endphp
+                    @if ($me->hasRole(...\App\Support\ApplicationAccess::VIEW_ROLES))
+                        {!! $section('Admissions') !!}
+                        {!! $item('admin.applications.index', 'fa-file-alt', 'Applications', 'admin.applications.*') !!}
+                    @endif
+                    @if ($me->hasRole($R::ADMIN, $R::ACCOUNTS))
+                        {!! $section('Accounts') !!}
+                        {!! $item('admin.payments.index', 'fa-rupee-sign', 'Payments', 'admin.payments.*') !!}
+                    @endif
+                    @if ($me->hasRole($R::ADMIN))
+                        {!! $section('Setup') !!}
+                        <li class="nav-item {{ request()->routeIs('admin.master.*') ? 'active' : '' }}"><a href="{{ route('admin.master.index', 'courses') }}"><i class="fas fa-database"></i><p>Master Data</p></a></li>
+                    @endif
+                    @if ($me->isSuperAdmin())
+                        {!! $item('admin.settings.fees', 'fa-tags', 'Fees', 'admin.settings.*') !!}
+                        {!! $item('admin.staff.index', 'fa-user-shield', 'Staff Accounts', 'admin.staff.*') !!}
+                        {!! $item('admin.departments.index', 'fa-building', 'Departments', 'admin.departments.*') !!}
                     @endif
                     @if ($me->isSuperAdmin())
                         <li class="nav-section"><span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span><h4 class="text-section">Security</h4></li>

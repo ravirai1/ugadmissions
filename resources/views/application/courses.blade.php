@@ -18,7 +18,7 @@
 
     <div class="form-section">
         <h5>Choose courses</h5>
-        <p class="small text-muted">Only courses you are eligible for under DU rules (based on your Class 12 subjects and CUET papers) can be selected. Fee: ₹500 for the first course and ₹200 for each additional course.</p>
+        <p class="small text-muted">Only courses you are eligible for under DU rules (based on your Class 12 subjects and CUET papers) can be selected. @php $fees = \App\Services\FeeCalculator::fees(); @endphp Fee: ₹{{ $fees['first_course'] }} for the first course and ₹{{ $fees['additional_course'] }} for each additional course.</p>
         @error('courses')<div class="alert alert-danger py-2">{{ $message }}</div>@enderror
 
         @foreach ($courses as $course)
@@ -30,7 +30,7 @@
         <h5>Residence</h5>
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="residence" name="residence" value="1" @checked(old('residence', $app->residence))>
-            <label class="form-check-label" for="residence">I wish to apply for College residence (additional ₹1,000)</label>
+            <label class="form-check-label" for="residence">I wish to apply for College residence (additional ₹{{ number_format(\App\Services\FeeCalculator::fees()['residence']) }})</label>
         </div>
     </div>
     @include('application._buttons')

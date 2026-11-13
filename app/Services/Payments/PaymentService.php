@@ -47,7 +47,7 @@ class PaymentService
     public function initiateAddCourses(Application $app, array $courses, ?string $ip): Payment
     {
         $this->assertPaid($app);
-        $each = (int) config('payment.fees.course_after_payment');
+        $each = FeeCalculator::fees()['course_after_payment'];
         $items = array_map(fn ($c) => ['type' => 'course', 'label' => $c['label'], 'amount' => $each, 'row' => $c['row']], $courses);
 
         return $this->create($app, Payment::ADD_COURSE, $items, $this->fees->forAddedCourses(count($items)), $ip);

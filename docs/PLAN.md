@@ -37,16 +37,24 @@ Also in PR #2: legal pages (privacy, terms, refund, disclaimer), Christian stude
 - To confirm with SBI's kit before go-live: request/response field order and cipher (both configurable in one place, `SbiEpayGateway` / `SBI_EPAY_CIPHER`)
 
 ## Step 4 – Admin portal
-- Super admin: departments, staff accounts by role and department, per-account permissions, deactivate, audit log
-- Roles: admin, department faculty, religious scrutiny, accounts, helpdesk/chat admin, print, interview panel, attendance desk (tech team)
-- Master data: courses (seats per category, eligibility, CUET combinations, BFS/PCM, JMC switch), states/districts, categories, PwBD types, NTA subjects and equivalences, fees, document types
-- Dashboard: registrations, submitted, paid; course-wise, category-wise, gender, state (by current/permanent/belongs-to), residence, PwBD, JMC vs SSC, payments, drop-off, scrutiny status, Excel export
+### 4a ✅ (PR #4)
+- Super admin: staff accounts by role and department (temporary password shown once, forced change, OTP), activate/deactivate, password reset, departments; all audited
+- Fees editable by the super admin (apply to payments started after the change); public pages show the current fees
+- Master data (admin): courses (department, JMC flag, display order, seats per category, DU eligibility rules with a check for unknown keys and subject codes), states/UTs, districts (with "add many at once"), categories, PwBD types, CUET subjects, Class 12 subject ↔ CUET paper mapping. Records are deactivated, not deleted.
+- Applications list with filters (fee, course, category, Christian sub-category, gender, current/permanent/belongs-to state, residence, PwBD, CST, search), full application view with documents, Excel export
+- Role-based lists: department faculty and interview panels see paid applications for their department's courses; religious scrutiny sees paid Christian applications; central roles see all
+- Dashboard (admin, accounts): registrations, in progress, submitted, paid, residence, PwBD; course-wise (female, Christian, JMC preference, residence, added later), category-wise with Christian sub-categories, gender, state-wise three ways, PwBD by disability, payments by purpose, last 14 days; switch between fee-paid and all submitted; one-click Excel workbook of every table
+- Department dashboard: their queue size and course-wise counts
+
+### 4b – Scrutiny and queries
 - Academic scrutiny (department-wise, live queue once paid): academic mapping table (CUET ↔ Class 12 ↔ course rule), document checklist, approve/reject/query, locking
 - Religious scrutiny (Christian categories): religious section and certificates only
 - Queries: reviewer raises query → applicant email → reply via secure upload link (and optionally by email reply via IMAP) → attached to profile with history → back in queue; reminders
+
+### 4c – Helpdesk, print, notices
 - Helpdesk: floating help button; chat with admin (logged in) and query form with name, email, mobile, screenshot; inbox, assignment, quick replies, reports
 - Print role: application form, documents, receipts, call letters, bulk PDF; print log and footer
-- Notices, bulk email/SMS, correction window, admission dates
+- Notices, bulk email, correction window, admission dates
 
 ## Step 5 – Interviews, merit and seats
 - Eligible = paid + academic scrutiny approved + religious scrutiny approved (if Christian category)
