@@ -49,6 +49,7 @@
                         <a href="{{ route('about') }}" class="nav-item nav-link {{ request()->routeIs('about') ? 'active' : '' }}">About</a>
                         <a href="{{ route('documents') }}" class="nav-item nav-link {{ request()->routeIs('documents') ? 'active' : '' }}">Documents</a>
                         <a href="{{ route('christian') }}" class="nav-item nav-link {{ request()->routeIs('christian') ? 'active' : '' }}">Christian Students</a>
+                        <a href="{{ route('notices') }}" class="nav-item nav-link {{ request()->routeIs('notices') ? 'active' : '' }}">Notices</a>
                         <a href="{{ route('faq') }}" class="nav-item nav-link {{ request()->routeIs('faq') ? 'active' : '' }}">FAQ</a>
                         <a href="{{ route('contact') }}" class="nav-item nav-link {{ request()->routeIs('contact') ? 'active' : '' }}">Contact</a>
                     </div>
@@ -98,7 +99,9 @@
                     <a class="btn btn-link" href="{{ route('about') }}">About</a>
                     <a class="btn btn-link" href="{{ route('documents') }}">Documents Required</a>
                     <a class="btn btn-link" href="{{ route('christian') }}">Christian Students</a>
+                    <a class="btn btn-link" href="{{ route('notices') }}">Notices</a>
                     <a class="btn btn-link" href="{{ route('faq') }}">FAQ</a>
+                    <a class="btn btn-link" href="{{ route('help') }}">Help &amp; Queries</a>
                     <a class="btn btn-link" href="{{ route('contact') }}">Contact</a>
                 </div>
                 <div class="col-lg-3 col-md-6">
@@ -132,6 +135,7 @@
         </div>
     </div>
 
+    <a href="{{ route('help') }}" class="btn btn-primary help-fab py-2 px-3"><i class="fa fa-comments me-2"></i>Help</a>
     <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top" aria-label="Back to top"><i class="fa fa-arrow-up"></i></a>
 
     <script src="{{ asset('admin-assets/js/core/jquery-3.7.1.min.js') }}"></script>

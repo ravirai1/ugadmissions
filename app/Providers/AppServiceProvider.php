@@ -51,6 +51,9 @@ class AppServiceProvider extends ServiceProvider
             'pay-check' => [6, 10],
             'pay-gateway' => [60, 1],
             'admin-pay-check' => [60, 1],
+            'help-query' => [5, 10],
+            'help-chat' => [20, 1],
+            'help-poll' => [30, 1],
         ];
 
         foreach ($limits as $name => [$max, $minutes]) {

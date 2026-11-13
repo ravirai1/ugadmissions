@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Payment;
+use App\Models\PrintLog;
 use App\Services\Payments\PaymentService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -70,6 +71,7 @@ class PaymentController extends Controller
     public function receipt(Payment $payment)
     {
         abort_unless($payment->isSuccess(), 404);
+        PrintLog::record('receipt', $payment->application, ['receipt_no' => $payment->receipt_no]);
 
         return view('payment.receipt', ['payment' => $payment->load('application.user'), 'back' => route('admin.payments.show', $payment)]);
     }

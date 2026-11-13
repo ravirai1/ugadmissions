@@ -39,4 +39,13 @@ return [
         'phone' => env('ADMISSIONS_PHONE', '+91-11-27667271'),
         'address' => 'St. Stephen\'s College, University Enclave, Delhi - 110007',
     ],
+
+    // Helpdesk quick replies (staff can insert and edit before sending).
+    'quick_replies' => [
+        'Thank you for writing to us. We are looking into your query and will reply shortly.',
+        'Please check your spam/junk folder for the verification email. You can request a new link after logging in.',
+        'If money was debited but your payment is not shown, wait 45 minutes and click "Check payment status" on your dashboard. Please do not pay again.',
+        'Please make sure the CUET papers you count for a course match subjects you studied in Class 12, as required by the University of Delhi.',
+        'Your application is under scrutiny. You will be informed by email if anything else is needed.',
+    ],
 ];

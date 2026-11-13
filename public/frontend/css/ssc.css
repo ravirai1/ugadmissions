@@ -45,3 +45,12 @@
 .navbar-light .navbar-nav .nav-link { white-space: nowrap; }
 @media (min-width: 992px) { .navbar-light .navbar-nav .nav-link { margin-right: 22px; } }
 .footer .btn.btn-link { text-align: left; white-space: normal; }
+
+/* Helpdesk */
+.help-fab { position: fixed; left: 24px; bottom: 24px; z-index: 99; border-radius: 30px; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.chat-box { height: 420px; overflow-y: auto; background: #f7f7f9; border: 1px solid #e3e3e8; padding: 12px; }
+.chat-msg { max-width: 78%; margin-bottom: 10px; padding: 8px 12px; border-radius: 10px; background: #fff; border: 1px solid #e6e6ea; }
+.chat-msg.mine { margin-left: auto; background: #fbeaea; border-color: #f0caca; }
+.chat-meta { font-size: 11px; color: #777; margin-bottom: 2px; }
+.chat-att { font-size: 12px; display: inline-block; margin-top: 4px; }
+.chat-body { white-space: pre-line; overflow-wrap: anywhere; }

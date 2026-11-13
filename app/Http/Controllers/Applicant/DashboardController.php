@@ -18,6 +18,7 @@ class DashboardController extends Controller
         $total = count(ApplicationSteps::slugs()) - 1;
 
         return view('applicant.dashboard', [
+            'notices' => \App\Models\Notice::forUser($request->user())->limit(5)->get(),
             'user' => $user,
             'app' => $app,
             'stages' => $stages,

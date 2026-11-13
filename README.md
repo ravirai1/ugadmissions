@@ -21,11 +21,17 @@ Point the web server's document root at `public/`.
 ## Staff panel
 `https://<your-domain>/<ADMIN_PATH>/login` (default `ssc-staff`). Login needs password, CAPTCHA and an emailed 6-digit code.
 
+Desks in the panel:
+- **Helpdesk** (helpdesk, admin): chats from logged-in applicants and queries from the public form at `/help/query`; replies are also emailed.
+- **Print Desk** (print, admin): application forms (single or a whole course), receipts and documents; every print goes in the print log.
+- **Notices** (admin): shown on the home page and dashboards by audience; each notice can be emailed once to its audience.
+
 ## Production checklist
 - `APP_ENV=production`, `APP_DEBUG=false`, HTTPS only, `SESSION_SECURE_COOKIE=true`
 - `expose_php = Off` in php.ini; deny web access to everything outside `public/`
 - Set `MAIL_MAILER=smtp` with the college mail server
 - Cron every minute: `* * * * * cd /path/to/app && php artisan schedule:run` (re-checks unconfirmed SBI ePay payments every 15 minutes)
+- Queue worker kept running (Supervisor or systemd): `php artisan queue:work --tries=3` (sends notice emails to applicants in the background)
 - SBI ePay: set `SBI_EPAY_DRIVER=sbi`, merchant id, key and cipher from SBI's kit; give SBI the return URL `https://<your-domain>/payment/sbi/response` and push URL `https://<your-domain>/payment/sbi/push`
 - Daily database backups
 
