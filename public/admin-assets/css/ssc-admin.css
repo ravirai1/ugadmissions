@@ -1,0 +1,9 @@
+/* St. Stephen's branding over Kaiadmin */
+.logo-header .logo img { height: 34px; width: auto; }
+.sidebar[data-background-color="dark"], .logo-header[data-background-color="dark"] { background: #1f2a44 !important; }
+.btn-primary, .bg-primary { background: #9b1c1c !important; border-color: #9b1c1c !important; }
+.btn-primary:hover { background: #7a1414 !important; }
+.nav-secondary > .nav-item.active > a:before { background: #c9a227 !important; }
+.admin-auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f7fb; }
+.admin-auth .card { width: 100%; max-width: 420px; border-top: 4px solid #9b1c1c; }
+.captcha-q { font-weight: 600; background: #f3f4f6; padding: .3rem .7rem; border-radius: .25rem; user-select: none; }
