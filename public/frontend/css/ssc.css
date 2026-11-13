@@ -31,3 +31,17 @@
 .footer .btn.btn-link { color: rgba(255,255,255,.7); }
 .footer .btn.btn-link:hover { color: #fff; }
 .faq-q { font-weight: 600; }
+.step-nav .list-group-item { font-size: .9rem; border-left: 3px solid transparent; }
+.step-nav .list-group-item.active { background: #fff; color: var(--bs-primary); border-left-color: var(--bs-primary); font-weight: 600; }
+.step-nav .list-group-item.done { color: #1b5e20; }
+.step-nav .list-group-item.locked { color: #9ca3af; pointer-events: none; }
+.form-section { background: #fff; border: 1px solid #e5e7eb; border-radius: .5rem; padding: 1.5rem; margin-bottom: 1.25rem; }
+.form-section h5 { color: var(--bs-secondary); margin-bottom: 1rem; }
+.course-card { border: 1px solid #e5e7eb; border-radius: .5rem; padding: 1rem; margin-bottom: .75rem; }
+.course-card.ineligible { background: #f9fafb; color: #6b7280; }
+.match-ok { color: #1b5e20; } .match-bad { color: #b91c1c; }
+.doc-thumb { max-height: 90px; max-width: 120px; border: 1px solid #e5e7eb; }
+.preview-table th { width: 35%; background: #f9fafb; font-weight: 600; }
+.navbar-light .navbar-nav .nav-link { white-space: nowrap; }
+@media (min-width: 992px) { .navbar-light .navbar-nav .nav-link { margin-right: 22px; } }
+.footer .btn.btn-link { text-align: left; white-space: normal; }

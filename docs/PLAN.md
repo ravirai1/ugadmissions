@@ -12,7 +12,9 @@ St. Stephen's College, University of Delhi. Laravel 13 + MySQL. Applicant site u
 - Failed-login IP blocking (staff: 5 in 15 min → 30 min block; applicants: 10 in 15 min → 15 min), login log, manual block/unblock, audit log
 - Self-hosted CAPTCHA on signup, login, forgot password; rate limits on signup, resend, reset
 
-## Step 2 – Application form (each step saves as draft)
+## Step 2 – Application form ✅ (PR #2)
+Also in PR #2: legal pages (privacy, terms, refund, disclaimer), Christian students guideline page, "Designed & Developed by IT Department" footer.
+
 1. Basic details: name, DOB, gender (Male/Female/Transgender), family income, last school
 2. Address: current and permanent (with "same as current"), state and district dropdowns, PIN, and "state you belong to"
 3. Category: DU categories (UR, OBC-NCL, SC, ST, EWS) and Christian (CNI, CNID, COTH), CST checkbox, baptism details (date, church, priest's name...), PwBD yes/no with DU/RPwD disability groups, percentage, UDID
@@ -28,6 +30,8 @@ St. Stephen's College, University of Delhi. Laravel 13 + MySQL. Applicant site u
 - After payment: add course at ₹500 each, add residence at ₹1,000, each a separate transaction
 - SBI ePay: encrypted request/response, server-side amount, status API double-check, duplicate/replay protection
 - Payment tracking table, receipts, reconciliation and daily settlement report
+- "Check payment status" button on the applicant dashboard 45 minutes after an unconfirmed attempt: queries SBI ePay, marks paid and generates the receipt if found
+- Admin: per-transaction "check with SBI", bulk re-check of pending payments older than 45 minutes, automatic background re-check, all logged
 
 ## Step 4 – Admin portal
 - Super admin: departments, staff accounts by role and department, per-account permissions, deactivate, audit log

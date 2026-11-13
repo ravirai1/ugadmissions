@@ -26,9 +26,23 @@
         <div class="col-lg-8">
             <div class="p-4 border h-100">
                 <h5 class="mb-3">Your Application</h5>
-                <p class="text-muted">You have not started your application yet.</p>
-                <a href="#" class="btn btn-primary py-2 px-4 disabled" aria-disabled="true"><i class="fa fa-edit me-2"></i>Apply Now</a>
-                <p class="small text-muted mt-2 mb-0">The application form opens in the next release.</p>
+                @if (! $app)
+                    <p class="text-muted">You have not started your application yet.</p>
+                    <a href="{{ route('application.start') }}" class="btn btn-primary py-2 px-4"><i class="fa fa-edit me-2"></i>Apply Now</a>
+                @elseif (! $app->isSubmitted())
+                    <p class="mb-2">Application in progress: <strong>{{ $progress }}%</strong> complete.</p>
+                    <div class="progress mb-3" style="height:8px"><div class="progress-bar bg-primary" style="width: {{ $progress }}%"></div></div>
+                    <a href="{{ route('application.start') }}" class="btn btn-primary py-2 px-4"><i class="fa fa-edit me-2"></i>Continue Application</a>
+                @else
+                    <p class="mb-1">Application no.: <strong>{{ $app->application_no }}</strong></p>
+                    <p class="mb-2 small text-muted">Submitted {{ $app->submitted_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</p>
+                    <ul class="small">
+                        @foreach ($app->courses as $c)<li>{{ $c->course->name }} (DU pref. {{ $c->du_preference }})</li>@endforeach
+                        @if ($app->residence)<li>Residence</li>@endif
+                    </ul>
+                    <div class="alert alert-warning py-2 small mb-3">Fee payment pending. Online payment through SBI ePay opens in the next release.</div>
+                    <a href="{{ route('application.step', 'preview') }}" class="btn btn-outline-primary btn-sm"><i class="fa fa-eye me-1"></i>View Application</a>
+                @endif
             </div>
         </div>
         <div class="col-lg-4">

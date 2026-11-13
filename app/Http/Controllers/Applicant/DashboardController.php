@@ -3,19 +3,26 @@
 namespace App\Http\Controllers\Applicant;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApplicationSteps;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // Status tracker; later steps fill in real values from the application.
+        $user = $request->user();
+        $app = $user->application()->with('courses.course')->first();
         $stages = ['Registered', 'Application Submitted', 'Fee Paid', 'Scrutiny', 'Interview', 'Result'];
 
+        $done = $app ? count(array_intersect($app->completed_steps ?? [], ApplicationSteps::slugs())) : 0;
+        $total = count(ApplicationSteps::slugs()) - 1;
+
         return view('applicant.dashboard', [
-            'user' => $request->user(),
+            'user' => $user,
+            'app' => $app,
             'stages' => $stages,
-            'currentStage' => 0,
+            'currentStage' => $app?->isSubmitted() ? 2 : 1,
+            'progress' => (int) round(min($done, $total) / $total * 100),
         ]);
     }
 }

@@ -28,7 +28,7 @@ class ApplicantAuthTest extends TestCase
 
     public function test_public_pages_load_with_security_headers(): void
     {
-        foreach (['/', '/about', '/faq', '/contact', '/documents-required', '/register', '/login'] as $url) {
+        foreach (['/', '/about', '/faq', '/contact', '/documents-required', '/christian-students', '/legal/privacy-policy', '/legal/terms-and-conditions', '/legal/refund-policy', '/legal/disclaimer', '/register', '/login'] as $url) {
             $this->get($url)->assertOk()
                 ->assertHeader('X-Frame-Options', 'DENY')
                 ->assertHeader('X-Content-Type-Options', 'nosniff')
