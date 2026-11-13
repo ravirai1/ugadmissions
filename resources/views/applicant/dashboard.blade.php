@@ -70,7 +70,16 @@
                     </ul>
                 @endif
                 <h5 class="mb-3">Notices</h5>
-                <p class="small text-muted mb-0">No notices yet.</p>
+                @forelse ($notices as $n)
+                    <div class="small mb-3">
+                        <strong>@if ($n->is_pinned)<i class="fa fa-thumbtack text-primary me-1"></i>@endif{{ $n->title }}</strong>
+                        <span class="text-muted">· {{ $n->published_at?->timezone('Asia/Kolkata')->format('d M') }}</span>
+                        <div class="text-muted">{{ \Illuminate\Support\Str::limit($n->body, 160) }}</div>
+                    </div>
+                @empty
+                    <p class="small text-muted mb-0">No notices yet.</p>
+                @endforelse
+                @if ($notices->isNotEmpty())<a href="{{ route('notices') }}" class="small">All notices</a>@endif
             </div>
         </div>
     </div>

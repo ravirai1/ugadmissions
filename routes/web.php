@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Applicant;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\PageController;
 use App\Support\Roles;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,7 @@ Route::controller(PageController::class)->group(function () {
     Route::get('/about', 'about')->name('about');
     Route::get('/faq', 'faq')->name('faq');
     Route::get('/contact', 'contact')->name('contact');
+    Route::get('/notices', 'notices')->name('notices');
     Route::get('/documents-required', 'documents')->name('documents');
     Route::get('/christian-students', 'christianGuidelines')->name('christian');
     Route::get('/legal/{page}', 'legal')->name('legal')
@@ -70,6 +72,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/{payment}/check', 'check')->middleware('throttle:pay-check')->name('check')->whereNumber('payment');
         Route::get('/{payment}/receipt', 'receipt')->name('receipt')->whereNumber('payment');
     });
+});
+
+/*
+| Helpdesk: query form for anyone, chat for logged-in applicants
+*/
+Route::get('/help', [HelpController::class, 'index'])->name('help');
+Route::get('/help/query', [HelpController::class, 'queryForm'])->name('help.query');
+Route::post('/help/query', [HelpController::class, 'submitQuery'])->middleware('throttle:help-query')->name('help.query.send');
+Route::middleware(['auth', 'verified'])->prefix('help')->name('help.')->controller(HelpController::class)->group(function () {
+    Route::get('/chat', 'chat')->name('chat');
+    Route::post('/chat', 'send')->middleware('throttle:help-chat')->name('chat.send');
+    Route::get('/chat/messages', 'messages')->middleware('throttle:help-poll')->name('chat.messages');
+    Route::get('/attachment/{message}', 'attachment')->name('attachment')->whereNumber('message');
 });
 
 /*
@@ -175,6 +190,34 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
         });
         Route::get('/payments/{payment}/receipt', [Admin\PaymentController::class, 'receipt'])
             ->middleware('role:'.Roles::ADMIN.','.Roles::ACCOUNTS.','.Roles::PRINT)->name('payments.receipt')->whereNumber('payment');
+
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::HELPDESK)->prefix('helpdesk')->name('helpdesk.')->controller(Admin\HelpdeskController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/report', 'report')->name('report');
+            Route::get('/{ticket}', 'show')->name('show')->whereNumber('ticket');
+            Route::post('/{ticket}/reply', 'reply')->name('reply')->whereNumber('ticket');
+            Route::get('/{ticket}/messages', 'messages')->name('messages')->whereNumber('ticket');
+            Route::post('/{ticket}/assign', 'assign')->name('assign')->whereNumber('ticket');
+            Route::post('/{ticket}/status', 'status')->name('status')->whereNumber('ticket');
+            Route::get('/attachment/{message}', 'attachment')->name('attachment')->whereNumber('message');
+        });
+
+        Route::middleware('role:'.Roles::ADMIN)->prefix('notices')->name('notices.')->controller(Admin\NoticeController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{notice}/edit', 'edit')->name('edit')->whereNumber('notice');
+            Route::put('/{notice}', 'update')->name('update')->whereNumber('notice');
+            Route::delete('/{notice}', 'destroy')->name('destroy')->whereNumber('notice');
+            Route::post('/{notice}/email', 'email')->name('email')->whereNumber('notice');
+        });
+
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::PRINT)->prefix('print')->name('print.')->controller(Admin\PrintController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/bulk', 'bulk')->name('bulk');
+            Route::get('/log', 'log')->name('log');
+            Route::get('/application/{application}', 'form')->name('form')->whereNumber('application');
+        });
 
         Route::middleware('role:'.Roles::SUPER_ADMIN)->prefix('security')->name('security.')->group(function () {
             Route::get('/login-attempts', [Admin\SecurityController::class, 'attempts'])->name('attempts');

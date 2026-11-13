@@ -15,3 +15,10 @@
 .table.stat-table > tbody > tr > td, .table.stat-table > thead > tr > th, .table.stat-table > tr > td { padding: .35rem .5rem !important; height: auto !important; font-size: .85rem; }
 .table.stat-table td:first-child { min-width: 170px; }
 .stat-bar { height: 6px; background: #9b1c1c; border-radius: 3px; }
+/* Helpdesk */
+.chat-box { height: 460px; overflow-y: auto; background: #f7f7f9; border: 1px solid #e3e3e8; padding: 12px; border-radius: .4rem; }
+.chat-msg { max-width: 78%; margin-bottom: 10px; padding: 8px 12px; border-radius: 10px; background: #fff; border: 1px solid #e6e6ea; font-size: .9rem; }
+.chat-msg.mine { margin-left: auto; background: #eef3ff; border-color: #cfdcff; }
+.chat-meta { font-size: 11px; color: #777; margin-bottom: 2px; }
+.chat-att { font-size: 12px; display: inline-block; margin-top: 4px; }
+.chat-body { white-space: pre-line; overflow-wrap: anywhere; }

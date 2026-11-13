@@ -72,5 +72,21 @@
             </div>
         </div>
     </div>
+    @if ($notices->isNotEmpty())
+        <div class="p-4 border mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0"><i class="fa fa-bullhorn text-primary me-2"></i>Notices</h4>
+                <a href="{{ route('notices') }}" class="small">All notices</a>
+            </div>
+            <ul class="list-unstyled mb-0">
+                @foreach ($notices as $n)
+                    <li class="py-2 {{ $loop->last ? '' : 'border-bottom' }}">
+                        <a href="{{ route('notices') }}#notice-{{ $n->id }}">@if ($n->is_pinned)<i class="fa fa-thumbtack me-1"></i>@endif{{ $n->title }}</a>
+                        <span class="small text-muted ms-2">{{ $n->published_at?->timezone('Asia/Kolkata')->format('d M Y') }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 </div>
 @endsection

@@ -55,7 +55,18 @@
                         {!! $section('Accounts') !!}
                         {!! $item('admin.payments.index', 'fa-rupee-sign', 'Payments', 'admin.payments.*') !!}
                     @endif
+                    @if ($me->hasRole($R::ADMIN, $R::HELPDESK, $R::PRINT))
+                        {!! $section('Desk') !!}
+                    @endif
+                    @if ($me->hasRole($R::ADMIN, $R::HELPDESK))
+                        @php $unreadTickets = \App\Models\Ticket::where('unread_for_staff', true)->where('status', '!=', \App\Models\Ticket::CLOSED)->count(); @endphp
+                        <li class="nav-item {{ request()->routeIs('admin.helpdesk.*') ? 'active' : '' }}"><a href="{{ route('admin.helpdesk.index') }}"><i class="fas fa-comments"></i><p>Helpdesk</p>@if ($unreadTickets)<span class="badge badge-danger">{{ $unreadTickets }}</span>@endif</a></li>
+                    @endif
+                    @if ($me->hasRole($R::ADMIN, $R::PRINT))
+                        {!! $item('admin.print.index', 'fa-print', 'Print Desk', 'admin.print.*') !!}
+                    @endif
                     @if ($me->hasRole($R::ADMIN))
+                        {!! $item('admin.notices.index', 'fa-bullhorn', 'Notices', 'admin.notices.*') !!}
                         {!! $section('Setup') !!}
                         <li class="nav-item {{ request()->routeIs('admin.master.*') ? 'active' : '' }}"><a href="{{ route('admin.master.index', 'courses') }}"><i class="fas fa-database"></i><p>Master Data</p></a></li>
                     @endif

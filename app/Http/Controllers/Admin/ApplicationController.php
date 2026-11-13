@@ -9,6 +9,7 @@ use App\Models\ApplicationDocument;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Course;
+use App\Models\PrintLog;
 use App\Models\State;
 use App\Models\Subject;
 use App\Support\ApplicationAccess;
@@ -53,6 +54,9 @@ class ApplicationController extends Controller
     public function document(Request $request, ApplicationDocument $document)
     {
         abort_unless(ApplicationAccess::canView($request->user('admin'), $document->application), 404);
+        if ($request->boolean('print')) {
+            PrintLog::record('document', $document->application, ['type' => $document->type]);
+        }
 
         return Storage::disk('local')->response($document->path, $document->original_name, [
             'Content-Type' => $document->mime,

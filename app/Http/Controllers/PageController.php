@@ -2,11 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notice;
+use Illuminate\Http\Request;
+
 class PageController extends Controller
 {
     public function home()
     {
-        return view('pages.home');
+        return view('pages.home', ['notices' => Notice::forUser(null)->limit(5)->get()]);
+    }
+
+    /** Public notices, plus the applicant's own when logged in. */
+    public function notices(Request $request)
+    {
+        return view('pages.notices', ['notices' => Notice::forUser($request->user()?->hasVerifiedEmail() ? $request->user() : null)->paginate(20)]);
     }
 
     public function about()

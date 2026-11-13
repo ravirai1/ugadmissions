@@ -26,6 +26,10 @@
             </div>
         </div>
     </div>
-    <p class="text-center text-muted mt-4">For application queries, use the Help button to chat with the admissions team or send a query with a screenshot (available soon).</p>
+    <div class="text-center mt-4">
+        <p class="text-muted mb-3">For application queries, send us a query with a screenshot, or log in and chat with the admissions team.</p>
+        <a href="{{ route('help.query') }}" class="btn btn-primary py-2 px-4 me-2"><i class="fa fa-question-circle me-2"></i>Send a query</a>
+        @auth<a href="{{ route('help.chat') }}" class="btn btn-outline-primary py-2 px-4"><i class="fa fa-comments me-2"></i>Chat with us</a>@endauth
+    </div>
 </div>
 @endsection
