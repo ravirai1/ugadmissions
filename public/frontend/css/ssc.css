@@ -1,0 +1,33 @@
+/* St. Stephen's College branding over the Weldork template */
+:root {
+    --bs-primary: #9b1c1c;
+    --bs-primary-rgb: 155, 28, 28;
+    --bs-secondary: #1f2a44;
+    --bs-dark: #1f2a44;
+    --ssc-gold: #c9a227;
+}
+.text-primary { color: var(--bs-primary) !important; }
+.bg-primary { background-color: var(--bs-primary) !important; }
+.btn-primary, .btn-primary:focus { background-color: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
+.btn-primary:hover, .btn-primary:active { background-color: #7a1414 !important; border-color: #7a1414 !important; }
+.btn-outline-primary { color: var(--bs-primary); border-color: var(--bs-primary); }
+.btn-outline-primary:hover { background-color: var(--bs-primary); color: #fff; }
+.bg-dark { background-color: var(--bs-dark) !important; }
+.navbar-light .navbar-nav .nav-link.active, .navbar-light .navbar-nav .nav-link:hover { color: var(--bs-primary) !important; }
+.spinner-border.text-primary { color: var(--bs-primary) !important; }
+.ssc-brand img { height: 56px; width: auto; }
+.page-header { background: linear-gradient(120deg, #1f2a44 0%, #3a1f2b 60%, #9b1c1c 100%); }
+.hero { background: radial-gradient(circle at 85% 30%, rgba(201,162,39,.25), transparent 40%), linear-gradient(120deg, #1f2a44 0%, #3a1f2b 55%, #9b1c1c 100%); min-height: 64vh; }
+.hero-crest-wrap { width: 200px; height: 200px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 40px rgba(0,0,0,.35); border: 6px solid var(--ssc-gold); }
+.hero-crest { width: 120px; height: auto; }
+.auth-card { max-width: 520px; margin: 0 auto; }
+.auth-card .card { border: 0; box-shadow: 0 10px 30px rgba(0,0,0,.08); border-top: 4px solid var(--bs-primary); }
+.form-label .req { color: var(--bs-primary); }
+.captcha-q { font-weight: 600; background: #f3f4f6; padding: .4rem .8rem; border-radius: .25rem; letter-spacing: 1px; user-select: none; }
+.stage-tracker { display: flex; gap: .5rem; flex-wrap: wrap; }
+.stage-tracker .stage { flex: 1 1 140px; text-align: center; padding: .75rem .5rem; background: #f3f4f6; border-radius: .5rem; font-size: .9rem; }
+.stage-tracker .stage.done { background: #e8f5e9; color: #1b5e20; }
+.stage-tracker .stage.current { background: var(--bs-primary); color: #fff; }
+.footer .btn.btn-link { color: rgba(255,255,255,.7); }
+.footer .btn.btn-link:hover { color: #fff; }
+.faq-q { font-weight: 600; }
