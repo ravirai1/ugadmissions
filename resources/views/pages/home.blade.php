@@ -1,6 +1,7 @@
 @extends('layouts.frontend')
 @section('title', 'Home')
 @section('content')
+@php $fees = \App\Services\FeeCalculator::fees(); @endphp
 <div class="container-fluid hero d-flex align-items-center mb-5">
     <div class="container py-5">
         <div class="row">
@@ -63,10 +64,10 @@
             <div class="p-4 border h-100">
                 <h4 class="mb-3"><i class="fa fa-rupee-sign text-primary me-2"></i>Application Fee</h4>
                 <ul class="list-unstyled mb-0">
-                    <li class="py-2 border-bottom">First course: <strong>₹500</strong></li>
-                    <li class="py-2 border-bottom">Each additional course: <strong>₹200</strong></li>
-                    <li class="py-2 border-bottom">Residence (optional): <strong>₹1,000</strong></li>
-                    <li class="py-2">Course added after payment: <strong>₹500</strong> per course</li>
+                    <li class="py-2 border-bottom">First course: <strong>₹{{ $fees['first_course'] }}</strong></li>
+                    <li class="py-2 border-bottom">Each additional course: <strong>₹{{ $fees['additional_course'] }}</strong></li>
+                    <li class="py-2 border-bottom">Residence (optional): <strong>₹{{ number_format($fees['residence']) }}</strong></li>
+                    <li class="py-2">Course added after payment: <strong>₹{{ $fees['course_after_payment'] }}</strong> per course</li>
                 </ul>
             </div>
         </div>

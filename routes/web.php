@@ -104,6 +104,49 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
         Route::get('/password', [Admin\PasswordController::class, 'edit'])->name('password.edit');
         Route::put('/password', [Admin\PasswordController::class, 'update'])->name('password.update');
 
+        Route::get('/statistics.xlsx', [Admin\DashboardController::class, 'export'])
+            ->middleware('role:'.Roles::ADMIN.','.Roles::ACCOUNTS)->name('dashboard.export');
+
+        // Applications (each role sees only its own list; see App\Support\ApplicationAccess)
+        Route::middleware('role:'.implode(',', App\Support\ApplicationAccess::VIEW_ROLES))->prefix('applications')->name('applications.')
+            ->controller(Admin\ApplicationController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/export', 'export')->name('export');
+                Route::get('/{application}', 'show')->name('show')->whereNumber('application');
+                Route::get('/documents/{document}', 'document')->name('document')->whereNumber('document');
+            });
+
+        // Master data and fees (admin)
+        Route::middleware('role:'.Roles::ADMIN)->group(function () {
+            $types = implode('|', array_keys(App\Support\MasterData::types()));
+            Route::prefix('master/{type}')->name('master.')->where(['type' => $types])->controller(Admin\MasterDataController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::post('/bulk', 'bulk')->name('bulk');
+                Route::get('/{id}/edit', 'edit')->name('edit')->whereNumber('id');
+                Route::put('/{id}', 'update')->name('update')->whereNumber('id');
+                Route::post('/{id}/toggle', 'toggle')->name('toggle')->whereNumber('id');
+            });
+        });
+        Route::middleware('role:'.Roles::SUPER_ADMIN)->group(function () {
+            Route::get('/settings/fees', [Admin\SettingsController::class, 'fees'])->name('settings.fees');
+            Route::put('/settings/fees', [Admin\SettingsController::class, 'updateFees'])->name('settings.fees.update');
+
+            Route::controller(Admin\StaffController::class)->group(function () {
+                Route::get('/staff', 'index')->name('staff.index');
+                Route::get('/staff/create', 'create')->name('staff.create');
+                Route::post('/staff', 'store')->name('staff.store');
+                Route::get('/staff/{staff}/edit', 'edit')->name('staff.edit')->whereNumber('staff');
+                Route::put('/staff/{staff}', 'update')->name('staff.update')->whereNumber('staff');
+                Route::post('/staff/{staff}/reset-password', 'resetPassword')->name('staff.reset')->whereNumber('staff');
+                Route::post('/staff/{staff}/toggle', 'toggle')->name('staff.toggle')->whereNumber('staff');
+                Route::get('/departments', 'departments')->name('departments.index');
+                Route::post('/departments', 'storeDepartment')->name('departments.store');
+                Route::put('/departments/{department}', 'updateDepartment')->name('departments.update')->whereNumber('department');
+            });
+        });
+
         Route::middleware('role:'.Roles::ADMIN.','.Roles::ACCOUNTS)->prefix('payments')->name('payments.')->controller(Admin\PaymentController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/export', 'export')->name('export');
