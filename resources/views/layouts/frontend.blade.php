@@ -47,7 +47,8 @@
                     <div class="navbar-nav ms-auto">
                         <a href="{{ route('home') }}" class="nav-item nav-link {{ request()->routeIs('home') ? 'active' : '' }}">Home</a>
                         <a href="{{ route('about') }}" class="nav-item nav-link {{ request()->routeIs('about') ? 'active' : '' }}">About</a>
-                        <a href="{{ route('documents') }}" class="nav-item nav-link {{ request()->routeIs('documents') ? 'active' : '' }}">Documents Required</a>
+                        <a href="{{ route('documents') }}" class="nav-item nav-link {{ request()->routeIs('documents') ? 'active' : '' }}">Documents</a>
+                        <a href="{{ route('christian') }}" class="nav-item nav-link {{ request()->routeIs('christian') ? 'active' : '' }}">Christian Students</a>
                         <a href="{{ route('faq') }}" class="nav-item nav-link {{ request()->routeIs('faq') ? 'active' : '' }}">FAQ</a>
                         <a href="{{ route('contact') }}" class="nav-item nav-link {{ request()->routeIs('contact') ? 'active' : '' }}">Contact</a>
                     </div>
@@ -86,20 +87,28 @@
     <div class="container-fluid bg-dark footer mt-5 py-5">
         <div class="container py-4">
             <div class="row g-5">
-                <div class="col-lg-4 col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <h5 class="text-uppercase text-light mb-4">Admissions Office</h5>
                     <p class="mb-2 text-white-50"><i class="fa fa-map-marker-alt text-white me-3"></i>{{ config('admissions.contact.address') }}</p>
                     <p class="mb-2 text-white-50"><i class="fa fa-phone-alt text-white me-3"></i>{{ config('admissions.contact.phone') }}</p>
                     <p class="mb-2 text-white-50"><i class="fa fa-envelope text-white me-3"></i>{{ config('admissions.contact.email') }}</p>
                 </div>
-                <div class="col-lg-4 col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <h5 class="text-uppercase text-light mb-4">Quick Links</h5>
                     <a class="btn btn-link" href="{{ route('about') }}">About</a>
                     <a class="btn btn-link" href="{{ route('documents') }}">Documents Required</a>
+                    <a class="btn btn-link" href="{{ route('christian') }}">Christian Students</a>
                     <a class="btn btn-link" href="{{ route('faq') }}">FAQ</a>
                     <a class="btn btn-link" href="{{ route('contact') }}">Contact</a>
                 </div>
-                <div class="col-lg-4 col-md-6">
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="text-uppercase text-light mb-4">Legal</h5>
+                    <a class="btn btn-link" href="{{ route('legal', 'privacy-policy') }}">Privacy Policy</a>
+                    <a class="btn btn-link" href="{{ route('legal', 'terms-and-conditions') }}">Terms &amp; Conditions</a>
+                    <a class="btn btn-link" href="{{ route('legal', 'refund-policy') }}">Refund &amp; Cancellation Policy</a>
+                    <a class="btn btn-link" href="{{ route('legal', 'disclaimer') }}">Disclaimer</a>
+                </div>
+                <div class="col-lg-3 col-md-6">
                     <h5 class="text-uppercase text-light mb-4">Applicants</h5>
                     <a class="btn btn-link" href="{{ route('register') }}">Create Account</a>
                     <a class="btn btn-link" href="{{ route('login') }}">Login</a>
@@ -115,8 +124,9 @@
                     &copy; {{ date('Y') }} St. Stephen's College, University of Delhi. All rights reserved.
                 </div>
                 <div class="col-md-6 text-center text-md-end small">
+                    Designed &amp; Developed by <strong>IT Department, St. Stephen's College</strong><br>
                     {{-- Required by the free Weldork template licence (CC BY 4.0). --}}
-                    Designed By <a class="fw-semi-bold" href="https://htmlcodex.com" rel="noopener">HTML Codex</a>
+                    <span class="text-muted">Template by <a href="https://htmlcodex.com" rel="noopener">HTML Codex</a></span>
                 </div>
             </div>
         </div>

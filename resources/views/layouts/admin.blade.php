@@ -105,7 +105,7 @@
         <footer class="footer">
             <div class="container-fluid d-flex justify-content-between">
                 <div class="copyright">&copy; {{ date('Y') }} St. Stephen's College</div>
-                <div class="small">Admin theme: <a href="https://www.themekita.com" rel="noopener">ThemeKita</a></div>
+                <div class="small">Designed &amp; Developed by IT Department, St. Stephen's College</div>
             </div>
         </footer>
     </div>

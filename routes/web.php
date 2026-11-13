@@ -15,6 +15,9 @@ Route::controller(PageController::class)->group(function () {
     Route::get('/faq', 'faq')->name('faq');
     Route::get('/contact', 'contact')->name('contact');
     Route::get('/documents-required', 'documents')->name('documents');
+    Route::get('/christian-students', 'christianGuidelines')->name('christian');
+    Route::get('/legal/{page}', 'legal')->name('legal')
+        ->whereIn('page', ['privacy-policy', 'terms-and-conditions', 'refund-policy', 'disclaimer']);
 });
 
 /*
@@ -22,15 +25,15 @@ Route::controller(PageController::class)->group(function () {
 */
 Route::middleware('guest')->group(function () {
     Route::get('/register', [Applicant\AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [Applicant\AuthController::class, 'register'])->middleware('throttle:5,10');
+    Route::post('/register', [Applicant\AuthController::class, 'register'])->middleware('throttle:register');
 
     Route::get('/login', [Applicant\AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [Applicant\AuthController::class, 'login'])->middleware(['ip.allowed:applicant', 'throttle:10,1']);
+    Route::post('/login', [Applicant\AuthController::class, 'login'])->middleware(['ip.allowed:applicant', 'throttle:login']);
 
     Route::get('/forgot-password', [Applicant\PasswordResetController::class, 'request'])->name('password.request');
-    Route::post('/forgot-password', [Applicant\PasswordResetController::class, 'email'])->middleware('throttle:3,10')->name('password.email');
+    Route::post('/forgot-password', [Applicant\PasswordResetController::class, 'email'])->middleware('throttle:forgot')->name('password.email');
     Route::get('/reset-password/{token}', [Applicant\PasswordResetController::class, 'reset'])->name('password.reset');
-    Route::post('/reset-password', [Applicant\PasswordResetController::class, 'update'])->middleware('throttle:5,10')->name('password.update');
+    Route::post('/reset-password', [Applicant\PasswordResetController::class, 'update'])->middleware('throttle:reset')->name('password.update');
 });
 
 Route::middleware('auth')->group(function () {
@@ -38,12 +41,22 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/email/verify', [Applicant\VerificationController::class, 'notice'])->name('verification.notice');
     Route::get('/email/verify/{id}/{hash}', [Applicant\VerificationController::class, 'verify'])
-        ->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+        ->middleware(['signed', 'throttle:verify'])->name('verification.verify');
     Route::post('/email/verification-notification', [Applicant\VerificationController::class, 'resend'])
-        ->middleware('throttle:3,10')->name('verification.send');
+        ->middleware('throttle:verify-resend')->name('verification.send');
 
     Route::middleware('verified')->prefix('applicant')->name('applicant.')->group(function () {
         Route::get('/dashboard', [Applicant\DashboardController::class, 'index'])->name('dashboard');
+    });
+
+    Route::middleware('verified')->prefix('application')->name('application.')->controller(Applicant\ApplicationController::class)->group(function () {
+        $steps = implode('|', App\Support\ApplicationSteps::slugs());
+        Route::get('/', 'start')->name('start');
+        Route::post('/submit', 'submit')->middleware('throttle:app-submit')->name('submit');
+        Route::post('/documents/{type}', 'upload')->middleware('throttle:app-upload')->name('upload')->where('type', '[a-z0-9_]+');
+        Route::get('/documents/file/{document}', 'document')->name('document');
+        Route::get('/{step}', 'show')->name('step')->where('step', $steps);
+        Route::post('/{step}', 'save')->middleware('throttle:app-save')->name('save')->where('step', $steps);
     });
 });
 
@@ -52,12 +65,12 @@ Route::middleware('auth')->group(function () {
 */
 Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function () {
     Route::get('/login', [Admin\AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [Admin\AuthController::class, 'login'])->middleware(['ip.allowed:admin', 'throttle:10,1']);
+    Route::post('/login', [Admin\AuthController::class, 'login'])->middleware(['ip.allowed:admin', 'throttle:admin-login']);
 
     Route::middleware(['auth:admin', 'ip.allowed:admin'])->group(function () {
         Route::get('/otp', [Admin\AuthController::class, 'showOtp'])->name('otp.show');
-        Route::post('/otp', [Admin\AuthController::class, 'verifyOtp'])->middleware('throttle:10,1')->name('otp.verify');
-        Route::post('/otp/resend', [Admin\AuthController::class, 'resendOtp'])->middleware('throttle:3,5')->name('otp.resend');
+        Route::post('/otp', [Admin\AuthController::class, 'verifyOtp'])->middleware('throttle:admin-otp')->name('otp.verify');
+        Route::post('/otp/resend', [Admin\AuthController::class, 'resendOtp'])->middleware('throttle:admin-otp-resend')->name('otp.resend');
     });
 
     Route::post('/logout', [Admin\AuthController::class, 'logout'])->name('logout');
