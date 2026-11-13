@@ -47,7 +47,19 @@
                 </select>
                 <button class="btn btn-primary btn-sm text-nowrap" type="submit"><i class="fas fa-print me-1"></i>Open for printing</button>
             </form>
-            <p class="small text-muted mt-3 mb-0">Interview call letters will be printable here once they are generated.</p>
+        </div></div>
+
+        <div class="card"><div class="card-body">
+            <h5 class="card-title">Interview call letters</h5>
+            <form method="GET" action="{{ route('admin.print.call-letters') }}" target="_blank" class="d-flex gap-2">
+                <select class="form-select form-select-sm" name="course_id" required aria-label="Course">
+                    <option value="">Choose a course</option>
+                    @foreach ($courses as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach
+                </select>
+                <input type="date" class="form-control form-control-sm" name="date" aria-label="Interview date (optional)" style="max-width: 170px">
+                <button class="btn btn-primary btn-sm text-nowrap" type="submit"><i class="fas fa-print me-1"></i>Open for printing</button>
+            </form>
+            <p class="small text-muted mt-2 mb-0">Leave the date empty to print every call letter for the course.</p>
         </div></div>
     </div>
     <div class="col-lg-5">

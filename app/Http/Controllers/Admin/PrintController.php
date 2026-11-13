@@ -6,6 +6,7 @@ use App\Http\Controllers\Applicant\ApplicationController as ApplicantForm;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\Application;
+use App\Models\CallLetter;
 use App\Models\Category;
 use App\Models\Course;
 use App\Models\PrintLog;
@@ -64,6 +65,23 @@ class PrintController extends Controller
         return view('admin.print.forms', $this->shared() + [
             'apps' => $apps, 'title' => $course->name, 'total' => $total, 'offset' => $offset,
             'next' => $offset + self::BULK_LIMIT < $total ? route('admin.print.bulk', ['course_id' => $course->id, 'offset' => $offset + self::BULK_LIMIT]) : null,
+        ]);
+    }
+
+    /** Call letters for a course (optionally one interview date), one per page. */
+    public function callLetters(Request $request)
+    {
+        $course = Course::findOrFail($request->validate(['course_id' => ['required', 'integer']])['course_id']);
+        $q = CallLetter::where('course_id', $course->id)->with('application.user', 'application.documents', 'course')->orderBy('interview_date')->orderBy('id');
+        if ($date = $request->date('date')) {
+            $q->whereDate('interview_date', $date->toDateString());
+        }
+        $letters = $q->get();
+        PrintLog::record('call-letter', $letters->count() === 1 ? $letters->first()->application : null, ['course' => $course->name, 'count' => $letters->count()]);
+
+        return view('interview.call-letter', [
+            'letters' => $letters, 'title' => $course->name, 'back' => route('admin.print.index'),
+            'photoUrl' => fn ($doc) => route('admin.applications.document', $doc),
         ]);
     }
 

@@ -22,3 +22,6 @@ Illuminate\Support\Facades\Artisan::command('scrutiny:sync', function () {
     });
     $this->info("Checked $n paid application(s).");
 })->purpose('Create missing scrutiny records for paid applications');
+
+// Seat offers not accepted by their deadline lapse, freeing the seat for the next round.
+Illuminate\Support\Facades\Schedule::call(fn () => app(App\Services\AllotmentService::class)->lapse())->everyFifteenMinutes()->name('offers:lapse')->withoutOverlapping();

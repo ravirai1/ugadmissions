@@ -51,6 +51,23 @@
                     @if ($me->hasRole($R::ADMIN, $R::RELIGIOUS))
                         <li class="nav-item {{ request()->route('type') === 'religious' ? 'active' : '' }}"><a href="{{ route('admin.scrutiny.index', 'religious') }}"><i class="fas fa-church"></i><p>Religious Scrutiny</p></a></li>
                     @endif
+                    @if ($me->hasRole($R::ADMIN, $R::ATTENDANCE, $R::INTERVIEW_PANEL))
+                        {!! $section('Interviews') !!}
+                    @endif
+                    @if ($me->hasRole($R::ADMIN))
+                        {!! $item('admin.interviews.index', 'fa-envelope', 'Call Letters', 'admin.interviews.*') !!}
+                    @endif
+                    @if ($me->hasRole($R::ADMIN, $R::ATTENDANCE))
+                        {!! $item('admin.attendance.index', 'fa-user-check', 'Attendance Desk', 'admin.attendance.*') !!}
+                    @endif
+                    @if ($me->hasRole($R::ADMIN, $R::INTERVIEW_PANEL))
+                        {!! $item('admin.panel.index', 'fa-pen', 'Interview Marks', 'admin.panel.*') !!}
+                    @endif
+                    @if ($me->hasRole($R::ADMIN))
+                        {!! $item('admin.merit.index', 'fa-list-ol', 'Merit Lists', 'admin.merit.*') !!}
+                        {!! $item('admin.allotment.index', 'fa-th-large', 'Seat Allotment', 'admin.allotment.index') !!}
+                        {!! $item('admin.allotment.selections', 'fa-user-graduate', 'Selected List', 'admin.allotment.selections') !!}
+                    @endif
                     @if ($me->hasRole($R::ADMIN, $R::ACCOUNTS))
                         {!! $section('Accounts') !!}
                         {!! $item('admin.payments.index', 'fa-rupee-sign', 'Payments', 'admin.payments.*') !!}

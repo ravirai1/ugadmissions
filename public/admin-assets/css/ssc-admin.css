@@ -22,3 +22,6 @@
 .chat-meta { font-size: 11px; color: #777; margin-bottom: 2px; }
 .chat-att { font-size: 12px; display: inline-block; margin-top: 4px; }
 .chat-body { white-space: pre-line; overflow-wrap: anywhere; }
+/* Compact data tables (interviews, merit, allotment) */
+.table.table-compact > thead > tr > th, .table.table-compact > tbody > tr > td, .table.table-compact > tr > td, .table.table-compact > tr > th { padding: .4rem .55rem !important; height: auto !important; font-size: .85rem; }
+.table.table-compact > thead > tr > th { white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: .8rem; }

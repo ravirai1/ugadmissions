@@ -17,12 +17,21 @@ class DashboardController extends Controller
         $done = $app ? count(array_intersect($app->completed_steps ?? [], ApplicationSteps::slugs())) : 0;
         $total = count(ApplicationSteps::slugs()) - 1;
 
+        if ($app) {
+            app(\App\Services\AllotmentService::class)->lapse();
+        }
+        $letters = $app ? \App\Models\CallLetter::where('application_id', $app->id)->with('course')->orderBy('interview_date')->get() : collect();
+        $offers = $app ? \App\Models\SeatOffer::where('application_id', $app->id)->with('course')->latest('id')->get() : collect();
+
         return view('applicant.dashboard', [
+            'callLetters' => $letters,
+            'offers' => $offers,
+            'activeOffer' => $offers->first(fn ($o) => in_array($o->status, \App\Models\SeatOffer::ACTIVE, true)),
             'notices' => \App\Models\Notice::forUser($request->user())->limit(5)->get(),
             'user' => $user,
             'app' => $app,
             'stages' => $stages,
-            'currentStage' => $app?->isPaid() ? 3 : ($app?->isSubmitted() ? 2 : 1),
+            'currentStage' => $offers->isNotEmpty() ? 5 : ($letters->isNotEmpty() ? 4 : ($app?->isPaid() ? 3 : ($app?->isSubmitted() ? 2 : 1))),
             'payments' => $app ? $app->payments()->get() : collect(),
             'openQueries' => $app ? $app->queries()->where('status', 'open')->get() : collect(),
             'scrutinies' => $app ? $app->scrutinies()->with('applicationCourse.course')->get() : collect(),

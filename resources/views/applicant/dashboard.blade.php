@@ -29,6 +29,52 @@
         </div>
     @endforeach
 
+    @foreach ($offers->where('status', 'offered') as $o)
+        @if ($o->canAccept())
+            <div class="alert alert-success d-flex flex-wrap align-items-center gap-2">
+                <div><strong>Seat offered:</strong> {{ $o->course->name }} (total {{ $o->total }}/100). Accept by <strong>{{ $o->deadline_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') }} IST</strong> or the seat lapses.</div>
+                <a href="{{ route('applicant.offer', $o) }}" class="btn btn-sm btn-success ms-auto">View offer letter and respond</a>
+            </div>
+        @endif
+    @endforeach
+
+    @if ($callLetters->isNotEmpty() || $offers->isNotEmpty())
+        <div class="p-4 border mb-4">
+            <h5 class="mb-3">Interviews &amp; Results</h5>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Course</th><th>Interview</th><th>Result</th><th></th></tr></thead>
+                @foreach ($app->courses->where('payment_status', 'paid')->sortBy('du_preference') as $choice)
+                    @php
+                        $letter = $callLetters->firstWhere('application_course_id', $choice->id);
+                        $offer = $offers->firstWhere('application_course_id', $choice->id);
+                        $elsewhere = $activeOffer && $activeOffer->application_course_id !== $choice->id;
+                    @endphp
+                    <tr class="{{ $elsewhere ? 'text-muted' : '' }}">
+                        <td>{{ $choice->course->name }} <span class="small text-muted">(DU pref. {{ $choice->du_preference }})</span></td>
+                        <td class="small">@if ($letter){{ $letter->interview_date->format('d M Y') }}, {{ $letter->reporting_time }}@if ($letter->attendance) · {{ ucfirst($letter->attendance) }}@endif @else Not called yet @endif</td>
+                        <td class="small">
+                            @if ($offer)
+                                <strong>{{ \App\Models\SeatOffer::STATUSES[$offer->status] }}</strong> · {{ $offer->total }}/100
+                            @elseif ($elsewhere)
+                                Already selected – first preference ({{ $activeOffer->course->name }})
+                            @endif
+                        </td>
+                        <td class="text-end text-nowrap">
+                            @if ($elsewhere)
+                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>No action</button>
+                            @elseif ($offer)
+                                <a href="{{ route('applicant.offer', $offer) }}" class="btn btn-sm btn-outline-success">Offer letter</a>
+                            @elseif ($letter)
+                                <a href="{{ route('applicant.call-letter', $letter) }}" class="btn btn-sm btn-outline-primary">Call letter</a>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </table>
+            <p class="small text-muted mt-2 mb-0">Merit is out of 100: 85 from your verified CUET score and 15 from the interview. If you are selected in more than one course, you get the seat in the course you put first in your DU preferences.</p>
+        </div>
+    @endif
+
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="p-4 border h-100">

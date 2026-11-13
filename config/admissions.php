@@ -48,4 +48,13 @@ return [
         'Please make sure the CUET papers you count for a course match subjects you studied in Class 12, as required by the University of Delhi.',
         'Your application is under scrutiny. You will be informed by email if anything else is needed.',
     ],
+
+    // Merit: 85 from the verified CUET score + 15 from the interview = 100.
+    'merit' => [
+        'cuet_weight' => 85,
+        'interview_weight' => 15,       // panel members score out of this; the average is used
+        'cuet_paper_max' => (int) env('CUET_PAPER_MAX', 250), // maximum marks of one CUET paper (confirm for 2027)
+        'offer_days' => 3,              // default days to accept an offered seat
+        'interview_venue' => 'St. Stephen\'s College, University Enclave, Delhi - 110007',
+    ],
 ];

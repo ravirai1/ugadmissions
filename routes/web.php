@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [Applicant\DashboardController::class, 'index'])->name('dashboard');
         Route::get('/queries/{query}', [Applicant\QueryController::class, 'show'])->name('query')->whereNumber('query');
         Route::post('/queries/{query}', [Applicant\QueryController::class, 'reply'])->middleware('throttle:app-upload')->name('query.reply')->whereNumber('query');
+        Route::get('/call-letter/{letter}', [Applicant\InterviewController::class, 'callLetter'])->name('call-letter')->whereNumber('letter');
+        Route::get('/offer/{offer}', [Applicant\InterviewController::class, 'offer'])->name('offer')->whereNumber('offer');
+        Route::post('/offer/{offer}', [Applicant\InterviewController::class, 'respond'])->middleware('throttle:app-submit')->name('offer.respond')->whereNumber('offer');
     });
 
     Route::middleware('verified')->prefix('application')->name('application.')->controller(Applicant\ApplicationController::class)->group(function () {
@@ -216,7 +219,40 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
             Route::get('/', 'index')->name('index');
             Route::get('/bulk', 'bulk')->name('bulk');
             Route::get('/log', 'log')->name('log');
+            Route::get('/call-letters', 'callLetters')->name('call-letters');
             Route::get('/application/{application}', 'form')->name('form')->whereNumber('application');
+        });
+
+        // Step 5: interviews, merit and seat allotment
+        Route::middleware('role:'.Roles::ADMIN)->group(function () {
+            Route::prefix('interviews')->name('interviews.')->controller(Admin\InterviewController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/course/{course}', 'course')->name('course')->whereNumber('course');
+                Route::post('/course/{course}/issue', 'issue')->name('issue')->whereNumber('course');
+                Route::post('/course/{course}/lock', 'lock')->name('lock')->whereNumber('course');
+                Route::delete('/letters/{letter}', 'cancel')->name('cancel')->whereNumber('letter');
+            });
+            Route::prefix('merit')->name('merit.')->controller(Admin\MeritController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/{course}', 'show')->name('show')->whereNumber('course');
+                Route::get('/{course}/export', 'export')->name('export')->whereNumber('course');
+            });
+            Route::prefix('allotment')->name('allotment.')->controller(Admin\AllotmentController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/publish', 'publish')->name('publish');
+                Route::post('/lapse', 'lapse')->name('lapse');
+                Route::get('/selected', 'selections')->name('selections');
+                Route::get('/selected/export', 'export')->name('export');
+            });
+        });
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::ATTENDANCE)->prefix('attendance')->name('attendance.')->controller(Admin\AttendanceController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/scan/{token}', 'scan')->name('scan')->where('token', '[a-f0-9]{40}');
+            Route::post('/{letter}', 'mark')->name('mark')->whereNumber('letter');
+        });
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::INTERVIEW_PANEL)->prefix('panel')->name('panel.')->controller(Admin\PanelController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/{course}', 'save')->name('save')->whereNumber('course');
         });
 
         Route::middleware('role:'.Roles::SUPER_ADMIN)->prefix('security')->name('security.')->group(function () {
