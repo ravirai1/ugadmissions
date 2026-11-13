@@ -40,7 +40,13 @@
                         @foreach ($app->courses as $c)<li>{{ $c->course->name }} (DU pref. {{ $c->du_preference }})</li>@endforeach
                         @if ($app->residence)<li>Residence</li>@endif
                     </ul>
-                    <div class="alert alert-warning py-2 small mb-3">Fee payment pending. Online payment through SBI ePay opens in the next release.</div>
+                    @if ($app->isPaid())
+                        <div class="alert alert-success py-2 small mb-3"><i class="fa fa-check-circle me-1"></i>Application fee paid on {{ $app->fee_paid_at->timezone('Asia/Kolkata')->format('d M Y') }}. Your application is with the College for scrutiny.</div>
+                        <a href="{{ route('payment.index') }}" class="btn btn-primary btn-sm"><i class="fa fa-plus me-1"></i>Add course / residence</a>
+                    @else
+                        <div class="alert alert-warning py-2 small mb-3">Fee payment pending. Your application is complete only after the fee is paid.</div>
+                        <a href="{{ route('payment.index') }}" class="btn btn-primary btn-sm"><i class="fa fa-rupee-sign me-1"></i>Pay Application Fee</a>
+                    @endif
                     <a href="{{ route('application.step', 'preview') }}" class="btn btn-outline-primary btn-sm"><i class="fa fa-eye me-1"></i>View Application</a>
                 @endif
             </div>
@@ -52,5 +58,15 @@
             </div>
         </div>
     </div>
+
+    @if ($app?->isSubmitted())
+        <div class="p-4 border mt-4">
+            <h5 class="mb-3">Payments &amp; Receipts</h5>
+            @include('payment._history', ['payments' => $payments])
+        </div>
+    @endif
 </div>
 @endsection
+@push('scripts')
+<script src="{{ asset('frontend/js/ssc-pay.js') }}"></script>
+@endpush

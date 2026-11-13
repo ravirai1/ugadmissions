@@ -21,6 +21,10 @@ class SecurityHeaders
 
         $response = $next($request);
 
+        // Payment forms post to SBI ePay, so its host (live or test) is allowed as a form target.
+        $gw = parse_url((string) config('payment.sbi_epay.transaction_url'));
+        $gwHost = isset($gw['scheme'], $gw['host']) ? $gw['scheme'].'://'.$gw['host'] : '';
+
         $csp = implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'nonce-$nonce'",
@@ -29,7 +33,7 @@ class SecurityHeaders
             "img-src 'self' data: blob:",
             "connect-src 'self'",
             "frame-ancestors 'none'",
-            "form-action 'self' ".config('payment.sbi_epay.form_action_host', ''),
+            "form-action 'self' ".$gwHost,
             "base-uri 'self'",
             "object-src 'none'",
         ]);

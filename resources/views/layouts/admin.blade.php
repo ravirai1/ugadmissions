@@ -36,6 +36,12 @@
                     <li class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                         <a href="{{ route('admin.dashboard') }}"><i class="fas fa-home"></i><p>Dashboard</p></a>
                     </li>
+                    @if ($me->hasRole(\App\Support\Roles::ADMIN, \App\Support\Roles::ACCOUNTS))
+                        <li class="nav-section"><span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span><h4 class="text-section">Accounts</h4></li>
+                        <li class="nav-item {{ request()->routeIs('admin.payments.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.payments.index') }}"><i class="fas fa-rupee-sign"></i><p>Payments</p></a>
+                        </li>
+                    @endif
                     @if ($me->isSuperAdmin())
                         <li class="nav-section"><span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span><h4 class="text-section">Security</h4></li>
                         <li class="nav-item {{ request()->routeIs('admin.security.attempts') ? 'active' : '' }}">

@@ -58,6 +58,30 @@ Route::middleware('auth')->group(function () {
         Route::get('/{step}', 'show')->name('step')->where('step', $steps);
         Route::post('/{step}', 'save')->middleware('throttle:app-save')->name('save')->where('step', $steps);
     });
+
+    Route::middleware('verified')->prefix('payment')->name('payment.')->controller(Applicant\PaymentController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/application', 'payApplication')->middleware('throttle:pay-initiate')->name('application');
+        Route::get('/add-courses', 'addCoursesForm')->name('add-courses');
+        Route::post('/add-courses', 'addCourses')->middleware('throttle:pay-initiate')->name('add-courses.pay');
+        Route::post('/add-residence', 'payResidence')->middleware('throttle:pay-initiate')->name('add-residence');
+        Route::post('/{payment}/check', 'check')->middleware('throttle:pay-check')->name('check')->whereNumber('payment');
+        Route::get('/{payment}/receipt', 'receipt')->name('receipt')->whereNumber('payment');
+    });
+});
+
+/*
+| SBI ePay callbacks (CSRF-exempt; trusted only after decrypting and checking with SBI's status API)
+*/
+Route::prefix('payment')->name('payment.')->controller(Applicant\PaymentController::class)->group(function () {
+    Route::post('/sbi/response', 'response')->middleware('throttle:pay-gateway')->name('sbi.response');
+    Route::post('/sbi/push', 'push')->middleware('throttle:pay-gateway')->name('sbi.push');
+    Route::get('/result/{payment}', 'result')->middleware('signed')->name('result')->whereNumber('payment');
+
+    if (config('payment.sbi_epay.driver') === 'fake' && ! app()->environment('production')) {
+        Route::post('/fake', 'fakePage')->name('fake');
+        Route::post('/fake/complete', 'fakeComplete')->name('fake.complete');
+    }
 });
 
 /*
@@ -79,6 +103,16 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
         Route::get('/', [Admin\DashboardController::class, 'index'])->name('dashboard');
         Route::get('/password', [Admin\PasswordController::class, 'edit'])->name('password.edit');
         Route::put('/password', [Admin\PasswordController::class, 'update'])->name('password.update');
+
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::ACCOUNTS)->prefix('payments')->name('payments.')->controller(Admin\PaymentController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/export', 'export')->name('export');
+            Route::post('/check-pending', 'checkPending')->middleware('throttle:admin-pay-check')->name('check-pending');
+            Route::get('/{payment}', 'show')->name('show')->whereNumber('payment');
+            Route::post('/{payment}/check', 'check')->middleware('throttle:admin-pay-check')->name('check')->whereNumber('payment');
+        });
+        Route::get('/payments/{payment}/receipt', [Admin\PaymentController::class, 'receipt'])
+            ->middleware('role:'.Roles::ADMIN.','.Roles::ACCOUNTS.','.Roles::PRINT)->name('payments.receipt')->whereNumber('payment');
 
         Route::middleware('role:'.Roles::SUPER_ADMIN)->prefix('security')->name('security.')->group(function () {
             Route::get('/login-attempts', [Admin\SecurityController::class, 'attempts'])->name('attempts');

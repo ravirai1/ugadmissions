@@ -21,7 +21,8 @@ class DashboardController extends Controller
             'user' => $user,
             'app' => $app,
             'stages' => $stages,
-            'currentStage' => $app?->isSubmitted() ? 2 : 1,
+            'currentStage' => $app?->isPaid() ? 3 : ($app?->isSubmitted() ? 2 : 1),
+            'payments' => $app ? $app->payments()->get() : collect(),
             'progress' => (int) round(min($done, $total) / $total * 100),
         ]);
     }

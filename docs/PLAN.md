@@ -2,7 +2,7 @@
 
 St. Stephen's College, University of Delhi. Laravel 13 + MySQL. Applicant site uses the Weldork template and the admin panel uses Kaiadmin, both rebranded with the college logo.
 
-## Step 1 – Foundation, accounts and security ✅ (this PR)
+## Step 1 – Foundation, accounts and security ✅ (PR #1)
 - Public pages: Home, About, FAQ, Contact, Documents Required
 - Applicant signup: name, email, mobile, CUET 2027 number (must start with 27, unique)
 - Email verification with resend, forgot/reset password, applicant dashboard with status tracker
@@ -25,13 +25,16 @@ Also in PR #2: legal pages (privacy, terms, refund, disclaimer), Christian stude
 8. Uploads: photo, signature, marksheets, CUET scorecard, CSAS preference page, conditional certificates (baptism, ST, category, PwBD); image/PDF only, type checked from contents, stored privately
 9. Preview and final submit (locked afterwards)
 
-## Step 3 – Fees and SBI ePay
-- ₹500 first course + ₹200 each extra course + ₹1,000 residence (all editable by super admin)
-- After payment: add course at ₹500 each, add residence at ₹1,000, each a separate transaction
-- SBI ePay: encrypted request/response, server-side amount, status API double-check, duplicate/replay protection
-- Payment tracking table, receipts, reconciliation and daily settlement report
-- "Check payment status" button on the applicant dashboard 45 minutes after an unconfirmed attempt: queries SBI ePay, marks paid and generates the receipt if found
-- Admin: per-transaction "check with SBI", bulk re-check of pending payments older than 45 minutes, automatic background re-check, all logged
+## Step 3 – Fees and SBI ePay ✅ (PR #3)
+- ₹500 first course + ₹200 each extra course + ₹1,000 residence (set in `.env` now; editable from the panel in step 4)
+- After payment: add course at ₹500 each (eligibility, preferences, papers and a statement, added only once paid), add residence at ₹1,000, each a separate transaction
+- SBI ePay: encrypted request/response, amount worked out on the server, every "success" double-checked with SBI's status API, merchant id and amount checked, replay protection (a paid transaction never changes), duplicates flagged for refund
+- Payment tracking table with event history (initiate, redirect, push, status checks, who checked), printable receipts emailed on payment
+- "Check payment status" on the applicant dashboard and payments page, 45 minutes after an unconfirmed attempt: fetches the status from SBI and generates the receipt if paid
+- Admin (admin/accounts): payments list with filters and tiles, per-transaction "Check with SBI" (any time), "Check all unconfirmed" button (also on the dashboard), CSV export for Excel, receipts (also for print role), all audited
+- `payments:reconcile` runs every 15 minutes (cron: `php artisan schedule:run`) for unconfirmed payments from 45 minutes to 72 hours old
+- Test gateway page (SBI_EPAY_DRIVER=fake) to try success, failure and "money debited but browser never returned" without SBI credentials; refused in production
+- To confirm with SBI's kit before go-live: request/response field order and cipher (both configurable in one place, `SbiEpayGateway` / `SBI_EPAY_CIPHER`)
 
 ## Step 4 – Admin portal
 - Super admin: departments, staff accounts by role and department, per-account permissions, deactivate, audit log

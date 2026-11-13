@@ -34,7 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
             : route('applicant.dashboard'));
 
         // SBI ePay posts back to these from the bank; verified by decrypting the gateway response instead.
-        $middleware->validateCsrfTokens(except: ['payment/sbi/response', 'payment/sbi/push']);
+        // The local test gateway page is reached the same way (an auto-posted form from the payment page).
+        $middleware->validateCsrfTokens(except: ['payment/sbi/response', 'payment/sbi/push', 'payment/fake']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

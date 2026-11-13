@@ -25,7 +25,8 @@ Point the web server's document root at `public/`.
 - `APP_ENV=production`, `APP_DEBUG=false`, HTTPS only, `SESSION_SECURE_COOKIE=true`
 - `expose_php = Off` in php.ini; deny web access to everything outside `public/`
 - Set `MAIL_MAILER=smtp` with the college mail server
-- Run `php artisan schedule:work` (or cron `schedule:run`) once scheduled jobs are added
+- Cron every minute: `* * * * * cd /path/to/app && php artisan schedule:run` (re-checks unconfirmed SBI ePay payments every 15 minutes)
+- SBI ePay: set `SBI_EPAY_DRIVER=sbi`, merchant id, key and cipher from SBI's kit; give SBI the return URL `https://<your-domain>/payment/sbi/response` and push URL `https://<your-domain>/payment/sbi/push`
 - Daily database backups
 
 ## Tests
