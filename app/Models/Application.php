@@ -14,7 +14,7 @@ class Application extends Model
 
     protected $attributes = ['status' => self::DRAFT];
 
-    protected $guarded = ['id', 'user_id', 'application_no', 'status', 'submitted_at', 'submitted_ip', 'completed_steps'];
+    protected $guarded = ['id', 'user_id', 'application_no', 'status', 'submitted_at', 'submitted_ip', 'completed_steps', 'fee_paid_at', 'residence_added_after_payment'];
 
     protected function casts(): array
     {
@@ -29,6 +29,8 @@ class Application extends Model
             'needs_scribe' => 'boolean',
             'residence' => 'boolean',
             'submitted_at' => 'datetime',
+            'fee_paid_at' => 'datetime',
+            'residence_added_after_payment' => 'boolean',
         ];
     }
 
@@ -60,6 +62,16 @@ class Application extends Model
     public function allDocuments(): HasMany
     {
         return $this->hasMany(ApplicationDocument::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest('id');
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->fee_paid_at !== null;
     }
 
     public function curState(): BelongsTo { return $this->belongsTo(State::class, 'cur_state_id'); }

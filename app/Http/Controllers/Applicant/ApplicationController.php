@@ -13,6 +13,7 @@ use App\Models\PwbdType;
 use App\Models\State;
 use App\Models\Subject;
 use App\Notifications\ApplicationSubmitted;
+use App\Services\CourseSelection;
 use App\Services\Eligibility;
 use App\Support\ApplicationSteps;
 use App\Support\DocumentTypes;
@@ -35,7 +36,7 @@ class ApplicationController extends Controller
 
     public const GENDERS = ['Male', 'Female', 'Transgender'];
 
-    public function __construct(private Eligibility $eligibility) {}
+    public function __construct(private Eligibility $eligibility, private CourseSelection $selection) {}
 
     private function app(Request $request): Application
     {
@@ -375,86 +376,28 @@ class ApplicationController extends Controller
 
     private function saveCourses(Request $request, Application $app): void
     {
-        $female = $app->isFemale();
         $request->merge(['residence' => $request->boolean('residence')]);
         $data = $request->validate([
             'csas_application_no' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9-]+$/'],
             'residence' => ['boolean'],
-            'courses' => ['required', 'array', 'min:1'],
-            'courses.*.selected' => ['nullable'],
-            'courses.*.du_preference' => ['nullable', 'integer', 'min:1', 'max:999'],
-            'courses.*.jmc_preference' => ['nullable', 'integer', 'min:1', 'max:999'],
-            'courses.*.jmc_not_applied' => ['nullable'],
-            'courses.*.language' => ['nullable', 'integer'],
-            'courses.*.domains' => ['nullable', 'array'],
-            'courses.*.domains.*' => ['nullable', 'integer'],
-            'courses.*.combination' => ['nullable', 'string', 'max:100'],
-            'courses.*.programme' => ['nullable', 'string', 'max:100'],
-        ]);
+        ] + CourseSelection::rules());
 
         $selected = collect($data['courses'])->filter(fn ($c) => ! empty($c['selected']));
         if ($selected->isEmpty()) {
             throw ValidationException::withMessages(['courses' => 'Select at least one course.']);
         }
 
-        $scores = $app->cuetScores()->pluck('score', 'subject_id')->map(fn ($v) => (float) $v)->all();
-        $class12Ids = $this->eligibility->class12SubjectIds($app);
+        [$scores, $class12Ids] = $this->selection->context($app);
         $prefs = [];
         $rows = [];
 
         foreach ($selected as $courseId => $c) {
             $course = Course::where('is_active', true)->findOrFail($courseId);
-            $eval = $this->eligibility->evaluate($course, $app, $scores, $class12Ids);
-            $key = "courses.$courseId";
-
-            if (! $eval['eligible']) {
-                throw ValidationException::withMessages([$key => "You are not eligible for {$course->name}."]);
-            }
-            if (empty($c['du_preference'])) {
-                throw ValidationException::withMessages(["$key.du_preference" => "Enter your DU CSAS preference number for {$course->name}."]);
-            }
-            $prefs[] = (int) $c['du_preference'];
-
-            $jmcPref = null;
-            $jmcNa = false;
-            if ($female && $course->offered_at_jmc) {
-                $jmcNa = ! empty($c['jmc_not_applied']);
-                if (! $jmcNa && empty($c['jmc_preference'])) {
-                    throw ValidationException::withMessages(["$key.jmc_preference" => "Enter your JMC preference for {$course->name}, or tick \"Not applied to JMC\"."]);
-                }
-                $jmcPref = $jmcNa ? null : (int) $c['jmc_preference'];
-                if ($jmcPref !== null) {
-                    $prefs[] = $jmcPref;
-                }
-            }
-
-            $rules = $course->eligibility;
-            $lang = isset($c['language']) ? [(int) $c['language']] : [];
-            $isCombo = ! empty($rules['combinations']);
-            $combo = $isCombo ? ($c['combination'] ?? null) : ($c['programme'] ?? null);
-            $domains = $isCombo
-                ? (collect($eval['combinations'])->firstWhere('label', $combo)['papers'] ?? [])
-                : array_values(array_map('intval', array_filter($c['domains'] ?? [])));
-
-            if ($error = $this->eligibility->validateSelection($course, $eval, $lang, $domains, $combo)) {
-                throw ValidationException::withMessages([$key => "{$course->name}: $error"]);
-            }
-
-            $papers = array_merge($lang, $domains);
-            $rows[] = [
-                'course_id' => $course->id,
-                'du_preference' => (int) $c['du_preference'],
-                'jmc_preference' => $jmcPref,
-                'jmc_not_applied' => $jmcNa,
-                'combination' => $combo,
-                'papers' => $papers,
-                'cuet_score' => $this->eligibility->scoreFor($papers, $scores),
-            ];
+            $built = $this->selection->build($app, $course, $c, $scores, $class12Ids);
+            $rows[] = $built['row'];
+            array_push($prefs, ...$built['prefs']);
         }
-
-        if (count($prefs) !== count(array_unique($prefs))) {
-            throw ValidationException::withMessages(['courses' => 'Each preference number must be different (DU CSAS preference numbers are unique).']);
-        }
+        CourseSelection::assertUniquePrefs($prefs);
 
         $app->csas_application_no = strtoupper($data['csas_application_no']);
         $app->residence = $data['residence'];
