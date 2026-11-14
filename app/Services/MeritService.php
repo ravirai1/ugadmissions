@@ -76,6 +76,8 @@ class MeritService
             'total' => round($cuet + $interview, 2),
             'category' => $app->meritCategory() ?? 'UR',
             'pwbd' => (bool) $app->is_pwbd,
+            'cst' => $app->isChristian() && $app->is_cst && $app->meritCategory() !== 'UR', // not if religious scrutiny rejected
+
             'class12' => $app->class12Percentage() ?? 0.0,
             'dob' => $app->dob?->format('Y-m-d') ?? '9999-12-31',
         ];
