@@ -31,7 +31,7 @@ Desks in the panel:
 ## Production checklist
 - `APP_ENV=production`, `APP_DEBUG=false`, HTTPS only, `SESSION_SECURE_COOKIE=true`
 - `expose_php = Off` in php.ini; deny web access to everything outside `public/`
-- Set `MAIL_MAILER=smtp` with the college mail server
+- Email goes through **Amazon SES** over SMTP. In `.env` fill in `MAIL_USERNAME` and `MAIL_PASSWORD` with the SES SMTP credentials (SES console → SMTP settings → Create SMTP credentials), set `MAIL_HOST` to your SES region's endpoint (default `email-smtp.ap-south-1.amazonaws.com`), and verify the `MAIL_FROM_ADDRESS` domain in SES. Request production access so SES can email applicants (the sandbox only sends to verified addresses). Test with `php artisan tinker --execute="Mail::raw('Test', fn (\$m) => \$m->to('you@ststephens.edu')->subject('SES test'));"`
 - Cron every minute: `* * * * * cd /path/to/app && php artisan schedule:run` (re-checks unconfirmed SBI ePay payments every 15 minutes)
 - Queue worker kept running (Supervisor or systemd): `php artisan queue:work --tries=3` (sends notice emails to applicants in the background)
 - SBI ePay: set `SBI_EPAY_DRIVER=sbi`, merchant id, key and cipher from SBI's kit; give SBI the return URL `https://<your-domain>/payment/sbi/response` and push URL `https://<your-domain>/payment/sbi/push`
