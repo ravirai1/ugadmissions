@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Notifications\AdminOtp;
 use App\Rules\ValidCaptcha;
+use App\Services\ActivityLogger;
 use App\Services\LoginGuard;
 use App\Services\MathCaptcha;
 use Illuminate\Http\Request;
@@ -112,6 +113,7 @@ class AuthController extends Controller
     {
         if (Auth::guard('admin')->check()) {
             AuditLog::record('auth.logout');
+            app(ActivityLogger::class)->staff('logout', $request->user('admin'), null, $request);
         }
         $this->forceLogout($request);
 

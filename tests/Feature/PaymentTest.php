@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\Application;
 use App\Models\Course;
 use App\Models\Payment;
+use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\PaymentReceived;
 use App\Services\Payments\FakeGateway;
@@ -14,6 +15,7 @@ use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentService;
 use App\Services\Payments\SbiEpayCrypto;
 use App\Services\Payments\SbiEpayGateway;
+use App\Support\AdmissionWindow;
 use App\Support\Roles;
 use Database\Seeders\MasterDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -387,5 +389,70 @@ class PaymentTest extends TestCase
         $this->app['env'] = 'production';
         $this->expectException(\RuntimeException::class);
         app(PaymentGateway::class);
+    }
+
+    private function window(array $s): void
+    {
+        Setting::put(AdmissionWindow::KEY, $s + ['main_open' => true, 'main_closes_at' => null, 'reopen' => false, 'reopen_until' => null, 'course_ids' => []]);
+    }
+
+    public function test_closed_main_round_blocks_the_form_and_unpaid_fee(): void
+    {
+        $this->submitted();
+        $this->window(['main_open' => false]);
+
+        $this->actingAs($this->user)->post('/payment/application')->assertRedirect()->assertSessionHasErrors('payment');
+        $this->assertSame(0, Payment::count());
+
+        $fresh = User::factory()->create();
+        $this->actingAs($fresh)->get('/application/basic')->assertRedirect(route('applicant.dashboard'));
+        $this->actingAs($fresh)->get('/applicant/dashboard')->assertOk()->assertSee('Applications are closed');
+    }
+
+    public function test_reopened_round_offers_only_vacant_courses_and_previous_applicants_can_add_one(): void
+    {
+        $app = $this->submitted();
+        $this->payAtGateway($this->startPayment(), 'success');
+
+        $math = $this->course('BSC-MAT');
+        $chem = $this->course('BSC-CHE') ?? $this->course('BA-ENG');
+        $this->window(['main_open' => false, 'reopen' => true, 'course_ids' => [$math->id], 'reopen_until' => now()->addDays(3)->toIso8601String()]);
+
+        $this->actingAs($this->user)->get('/applicant/dashboard')->assertOk()->assertSee('reopened for vacant seats')->assertSee($math->name);
+        $this->actingAs($this->user)->get('/payment/add-courses')->assertOk()->assertSee($math->name)->assertDontSee('id="c'.$chem->id.'"', false);
+
+        // a course that is not vacant cannot be added even by posting it directly
+        $row = ['selected' => 1, 'du_preference' => 4, 'language' => $this->sub('ENG'), 'domains' => [$this->sub('MAT'), $this->sub('PHY')], 'statement' => str_repeat('m', 120), 'jmc_not_applied' => 1];
+        $this->actingAs($this->user)->post('/payment/add-courses', ['courses' => [$chem->id => $row]])->assertSessionHasErrors();
+
+        $this->actingAs($this->user)->post('/payment/add-courses', ['courses' => [$math->id => $row]])->assertOk();
+        $this->payAtGateway(Payment::latest('id')->first(), 'success');
+        $this->assertNotNull($app->courses()->where('course_id', $math->id)->first());
+    }
+
+    public function test_admin_sets_the_admission_window(): void
+    {
+        $math = $this->course('BSC-MAT');
+        $this->asStaff(Roles::ADMIN)->get('/ssc-staff/admission-window')->assertOk()->assertSee('Vacant')->assertSee($math->name);
+        $this->asStaff(Roles::ADMIN)->put('/ssc-staff/admission-window', ['main_open' => '0', 'reopen' => '1'])->assertSessionHasErrors('course_ids');
+        $this->asStaff(Roles::ADMIN)->put('/ssc-staff/admission-window', ['main_open' => '0', 'reopen' => '1', 'course_ids' => [$math->id], 'reopen_until' => now('Asia/Kolkata')->addDays(2)->format('Y-m-d\TH:i')])->assertSessionHasNoErrors();
+        $this->assertSame([$math->id], AdmissionWindow::allowedCourseIds());
+        $this->asStaff(Roles::ACCOUNTS)->get('/ssc-staff/admission-window')->assertForbidden();
+    }
+
+    public function test_dashboard_tracks_every_payment_attempt_with_sbi_updates(): void
+    {
+        $this->submitted();
+        $first = $this->startPayment();
+        $this->payAtGateway($first, 'failed');
+        $second = $this->startPayment();
+        $this->payAtGateway($second, 'success');
+
+        $this->actingAs($this->user)->get('/applicant/dashboard')->assertOk()
+            ->assertSee('Track payments')
+            ->assertSee('2 payment attempts, 1 successful')
+            ->assertSee($first->order_no)->assertSee($second->order_no)
+            ->assertSee('SBI updates')
+            ->assertSee('Reply from SBI when you returned to this site');
     }
 }

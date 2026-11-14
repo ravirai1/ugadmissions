@@ -97,8 +97,11 @@ class Helpdesk
             if (str_starts_with($mime, 'image/') && @getimagesize($file->getRealPath()) === false) {
                 throw ValidationException::withMessages(['attachment' => 'The image appears to be damaged.']);
             }
+            if (DocumentStore::hidesCode($file)) {
+                throw ValidationException::withMessages(['attachment' => 'This file cannot be accepted. Attach a plain screenshot or PDF.']);
+            }
             $ext = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'application/pdf' => 'pdf'][$mime] ?? 'bin';
-            $path = $file->storeAs('helpdesk/'.$t->id, bin2hex(random_bytes(10)).'.'.$ext, 'documents');
+            $path = $file->storeAs('helpdesk/'.$t->id, 'ticket'.$t->id.'_'.now('Asia/Kolkata')->format('Ymd-His').'_'.bin2hex(random_bytes(4)).'.'.$ext, 'documents');
         }
 
         return $t->messages()->create(['sender' => $sender, 'admin_id' => $admin?->id, 'body' => $body, 'attachment_path' => $path, 'attachment_mime' => $mime]);

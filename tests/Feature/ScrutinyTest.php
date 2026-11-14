@@ -237,6 +237,19 @@ class ScrutinyTest extends TestCase
         $this->assertSame('pending', $s->status);
         $this->assertTrue($s->reply_received);
 
+        // the file got a unique, readable name at upload time
+        $this->assertMatchesRegularExpression('/^'.preg_quote($this->user->cuet_no, '/').'_class12_\d{8}-\d{6}_[a-z0-9]{6}\.png$/', $current->stored_name);
+        $this->assertStringEndsWith($current->stored_name, $current->path);
+
+        // the query, the reply and the upload are on the applicant's dashboard too
+        $this->actingAs($this->user)->get('/applicant/dashboard')->assertOk()
+            ->assertSee('Queries from the scrutiny team')
+            ->assertSee('Please upload a clear Class 12 marksheet.')
+            ->assertSee('Uploaded the clear copy.')
+            ->assertSee('1 document uploaded')
+            ->assertSee('Replied, under review');
+        $this->actingAs($this->user)->get("/applicant/queries/{$q->id}")->assertOk()->assertSee('Your reply')->assertSee('Uploaded the clear copy.');
+
         // the link cannot be used again
         $this->get("/query/{$q->id}/$token")->assertForbidden();
         $this->as($phy)->get("$this->base/scrutiny/academic?status=reply")->assertSee('SSC27000001');

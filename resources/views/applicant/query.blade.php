@@ -37,6 +37,17 @@
             <button type="submit" class="btn btn-primary px-4">Send reply</button>
         </form>
     @else
+        @if ($q->replied_at)
+            <div class="p-4 border mb-4">
+                <h5 class="mb-2">Your reply</h5>
+                <p class="small text-muted mb-2">Sent {{ $q->replied_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</p>
+                @if ($q->reply)<p style="white-space: pre-line">{{ $q->reply }}</p>@endif
+                @if ($q->attachments->isNotEmpty())
+                    <p class="small mb-1">Documents uploaded:</p>
+                    <ul class="small mb-0">@foreach ($q->attachments as $d)<li>{{ \App\Support\DocumentTypes::label($d->type) }} ({{ $d->original_name }})</li>@endforeach</ul>
+                @endif
+            </div>
+        @endif
         <div class="alert alert-info">This query is {{ $q->status }}.@if ($q->replied_at) You replied on {{ $q->replied_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}.@endif</div>
     @endif
 </div>

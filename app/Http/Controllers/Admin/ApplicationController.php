@@ -68,7 +68,7 @@ class ApplicationController extends Controller
             PrintLog::record('document', $document->application, ['type' => $document->type]);
         }
 
-        return Storage::disk('documents')->response($document->path, $document->original_name, [
+        return Storage::disk('documents')->response($document->path, $document->stored_name ?: basename($document->path), [
             'Content-Type' => $document->mime,
             'X-Content-Type-Options' => 'nosniff',
             'Content-Disposition' => 'inline; filename="'.$document->application->application_no.'-'.$document->type.'.'.pathinfo($document->path, PATHINFO_EXTENSION).'"',

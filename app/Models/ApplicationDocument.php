@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApplicationDocument extends Model
 {
-    protected $fillable = ['application_id', 'query_id', 'type', 'path', 'original_name', 'mime', 'size', 'sha256', 'is_current', 'status'];
+    protected $fillable = ['application_id', 'query_id', 'type', 'path', 'stored_name', 'original_name', 'mime', 'size', 'sha256', 'is_current', 'status'];
 
     protected function casts(): array
     {

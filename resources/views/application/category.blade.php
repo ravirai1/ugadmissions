@@ -17,6 +17,18 @@
         </div>
     </div>
 
+    <div class="du-alert mb-4" role="alert" data-show-when="category_code={{ \App\Models\Category::CHRISTIAN }}">
+        <h5 class="mb-2"><i class="fa fa-exclamation-triangle me-2"></i>Christian applicants: select Christian minority on the DU CSAS (UG) portal too</h5>
+        <p class="mb-2"><strong>On the DU CSAS (UG) portal you MUST choose the Christian minority category for St. Stephen's College.</strong></p>
+        <p class="mb-2">If you do not, <strong>you will not be considered under the Christian category</strong>, even if you choose it here. You need to apply in both places.</p>
+        <a href="{{ config('admissions.du_csas_url') }}" target="_blank" rel="noopener" class="btn btn-sm btn-dark"><i class="fa fa-external-link-alt me-1"></i>Open the DU CSAS (UG) portal</a>
+        <div class="form-check mt-3">
+            <input class="form-check-input @error('du_minority_confirm') is-invalid @enderror" type="checkbox" name="du_minority_confirm" id="du_minority_confirm" value="1" @checked(old('du_minority_confirm', $app->category_code === \App\Models\Category::CHRISTIAN && $app->christian_subcategory))>
+            <label class="form-check-label fw-bold" for="du_minority_confirm">I have selected / will select the Christian minority category for St. Stephen's College on the DU CSAS (UG) portal. <span class="req">*</span></label>
+            @error('du_minority_confirm')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
+    </div>
+
     <div class="form-section" data-show-when="category_code={{ \App\Models\Category::CHRISTIAN }}">
         <h5>Christian category details</h5>
         <div class="row g-3">

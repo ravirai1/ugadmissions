@@ -13,6 +13,7 @@ use App\Services\FeeCalculator;
 use App\Services\Payments\FakeGateway;
 use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentService;
+use App\Support\AdmissionWindow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
@@ -45,7 +46,7 @@ class PaymentController extends Controller
         return view('payment.index', [
             'app' => $app,
             'fee' => $app->isPaid() ? null : $this->fees->forApplication($app),
-            'payments' => $app->payments()->get(),
+            'payments' => $app->payments()->with('events')->get(),
             'fees' => FeeCalculator::fees(),
             'waitMinutes' => config('payment.status_check_after_minutes'),
         ]);
@@ -53,6 +54,17 @@ class PaymentController extends Controller
 
     public function payApplication(Request $request)
     {
+        $app = $this->app($request);
+        if (! $app->isPaid()) {
+            if (! AdmissionWindow::isOpen()) {
+                return redirect()->route('payment.index')->withErrors(['payment' => AdmissionWindow::status()]);
+            }
+            $blocked = $app->courses()->with('course')->get()->reject(fn ($c) => AdmissionWindow::allows($c->course_id));
+            if ($blocked->isNotEmpty()) {
+                return redirect()->route('payment.index')->withErrors(['payment' => 'These courses are not open now and cannot be paid for: '.$blocked->pluck('course.name')->implode(', ').'. Remove them on the Courses step first.']);
+            }
+        }
+
         return $this->start($request, fn (Application $app) => $this->payments->initiateApplicationFee($app, $request->ip()));
     }
 
@@ -65,10 +77,15 @@ class PaymentController extends Controller
     {
         $app = $this->app($request);
         abort_unless($app->isPaid(), 403, 'Pay the application fee first.');
+        if (! AdmissionWindow::isOpen()) {
+            return redirect()->route('payment.index')->withErrors(['payment' => AdmissionWindow::status().' Courses cannot be added now.']);
+        }
 
         [$scores, $class12Ids] = $selection->context($app);
         $have = $app->courses()->with('course')->get();
-        $courses = Course::where('is_active', true)->whereNotIn('id', $have->pluck('course_id'))->orderBy('sort')->get();
+        $allowed = AdmissionWindow::allowedCourseIds();
+        $courses = Course::where('is_active', true)->whereNotIn('id', $have->pluck('course_id'))
+            ->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->orderBy('sort')->get();
 
         return view('payment.add-courses', [
             'app' => $app,
@@ -86,6 +103,9 @@ class PaymentController extends Controller
     {
         $app = $this->app($request);
         abort_unless($app->isPaid(), 403, 'Pay the application fee first.');
+        if (! AdmissionWindow::isOpen()) {
+            return redirect()->route('payment.index')->withErrors(['payment' => AdmissionWindow::status()]);
+        }
 
         $data = $request->validate(CourseSelection::rules() + [
             'courses.*.statement' => ['nullable', 'string', 'max:2000'],
@@ -102,6 +122,9 @@ class PaymentController extends Controller
 
         foreach ($selected as $courseId => $c) {
             abort_if($have->contains('course_id', (int) $courseId), 422, 'You have already applied for this course.');
+            if (! AdmissionWindow::allows((int) $courseId)) {
+                throw ValidationException::withMessages(['courses' => 'Applications are not open for this course now.']);
+            }
             $course = Course::where('is_active', true)->findOrFail($courseId);
             $built = $selection->build($app, $course, $c, $scores, $class12Ids);
 

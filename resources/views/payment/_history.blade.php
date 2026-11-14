@@ -17,6 +17,23 @@
                         <td>
                             @include('payment._status', ['p' => $p])
                             @if ($p->is_duplicate)<br><span class="badge bg-warning text-dark">Duplicate – refund review</span>@endif
+                            @if ($p->pay_mode || $p->bank_ref)<div class="text-muted">{{ $p->pay_mode }}{{ $p->pay_mode && $p->bank_ref ? ' · ' : '' }}{{ $p->bank_ref ? 'Bank ref. '.$p->bank_ref : '' }}</div>@endif
+                            @if ($p->gateway_reason && ! $p->isSuccess())<div class="text-muted">{{ $p->gateway_reason }}</div>@endif
+                            @if ($p->check_count)<div class="text-muted">Checked {{ $p->check_count }} {{ \Illuminate\Support\Str::plural('time', $p->check_count) }}, last {{ $p->last_checked_at?->timezone('Asia/Kolkata')->format('d M, h:i A') }}</div>@endif
+                            @if ($p->events->isNotEmpty())
+                                <details class="mt-1">
+                                    <summary class="text-primary">SBI updates ({{ $p->events->count() }})</summary>
+                                    <ul class="list-unstyled mb-0 mt-1">
+                                        @foreach ($p->events as $e)
+                                            <li class="border-start ps-2 mb-1">
+                                                <span class="text-nowrap">{{ $e->created_at->timezone('Asia/Kolkata')->format('d M, h:i:s A') }}</span>
+                                                · <strong>{{ \App\Models\PaymentEvent::SOURCES[$e->source] ?? ucfirst($e->source) }}</strong>
+                                                · {{ ['success' => 'Successful', 'pending' => 'Awaiting confirmation', 'initiated' => 'Not completed', 'failed' => 'Failed'][$e->status] ?? ($e->status ? ucfirst($e->status) : 'No usable reply') }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </details>
+                            @endif
                         </td>
                         <td class="text-nowrap">
                             @if ($p->isSuccess())

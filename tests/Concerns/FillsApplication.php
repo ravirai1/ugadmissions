@@ -71,6 +71,13 @@ trait FillsApplication
 
     private function go(string $step, array $data)
     {
+        // the DU CSAS confirmations are ticked unless a test says otherwise
+        $data += match ($step) {
+            'courses' => ['du_csas_confirm' => '1'],
+            'category' => ['du_minority_confirm' => '1'],
+            default => [],
+        };
+
         return $this->actingAs($this->user)->post("/application/$step", $data);
     }
 
