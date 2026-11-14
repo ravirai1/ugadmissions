@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Application extends Model
 {
     public const DRAFT = 'draft';
+
     public const SUBMITTED = 'submitted';
 
     protected $attributes = ['status' => self::DRAFT];
@@ -116,12 +117,35 @@ class Application extends Model
         return $this->fee_paid_at !== null;
     }
 
-    public function curState(): BelongsTo { return $this->belongsTo(State::class, 'cur_state_id'); }
-    public function curDistrict(): BelongsTo { return $this->belongsTo(District::class, 'cur_district_id'); }
-    public function permState(): BelongsTo { return $this->belongsTo(State::class, 'perm_state_id'); }
-    public function permDistrict(): BelongsTo { return $this->belongsTo(District::class, 'perm_district_id'); }
-    public function domicileState(): BelongsTo { return $this->belongsTo(State::class, 'domicile_state_id'); }
-    public function pwbdType(): BelongsTo { return $this->belongsTo(PwbdType::class); }
+    public function curState(): BelongsTo
+    {
+        return $this->belongsTo(State::class, 'cur_state_id');
+    }
+
+    public function curDistrict(): BelongsTo
+    {
+        return $this->belongsTo(District::class, 'cur_district_id');
+    }
+
+    public function permState(): BelongsTo
+    {
+        return $this->belongsTo(State::class, 'perm_state_id');
+    }
+
+    public function permDistrict(): BelongsTo
+    {
+        return $this->belongsTo(District::class, 'perm_district_id');
+    }
+
+    public function domicileState(): BelongsTo
+    {
+        return $this->belongsTo(State::class, 'domicile_state_id');
+    }
+
+    public function pwbdType(): BelongsTo
+    {
+        return $this->belongsTo(PwbdType::class);
+    }
 
     public function isSubmitted(): bool
     {
@@ -181,13 +205,19 @@ class Application extends Model
         return $this->c10_max ? round($this->c10_obtained / $this->c10_max * 100, 2) : null;
     }
 
+    /** Christian applicants: false when they are not baptised and gave a parent's baptism instead. */
+    public function isBaptised(): bool
+    {
+        return ($this->baptism_details['baptised'] ?? 'yes') !== 'no';
+    }
+
     /** Documents this applicant must upload, based on their answers. */
     public function requiredDocumentTypes(): array
     {
         $types = ['photo', 'signature', 'class10', 'class12', 'cuet_scorecard', 'csas_preference'];
 
         if ($this->isChristian()) {
-            array_push($types, 'baptism', 'church_letter');
+            array_push($types, $this->isBaptised() ? 'baptism' : 'parent_baptism', 'church_letter');
             if ($this->is_cst) {
                 $types[] = 'st_certificate';
             }

@@ -38,6 +38,9 @@ class ApplicationController extends Controller
 
     public const GENDERS = ['Male', 'Female', 'Transgender'];
 
+    /** Baptism fields asked for each parent when the applicant is not baptised. */
+    private const PARENT_BAPTISM = ['baptism_date', 'baptism_church', 'baptism_place', 'baptism_priest'];
+
     public function __construct(private Eligibility $eligibility, private CourseSelection $selection) {}
 
     private function app(Request $request): Application
@@ -106,6 +109,7 @@ class ApplicationController extends Controller
                 'categories' => Category::whereNull('parent_code')->where('is_active', true)->orderBy('sort')->get(),
                 'subcategories' => Category::where('parent_code', Category::CHRISTIAN)->where('is_active', true)->orderBy('sort')->get(),
                 'pwbdTypes' => PwbdType::where('is_active', true)->orderBy('group_no')->get()->groupBy('group_name'),
+                'baptismYears' => (int) config('admissions.baptism_min_years', 2),
             ],
             'academics' => [
                 'class12Subjects' => Class12Subject::where('is_active', true)->orderBy('name')->get(),
@@ -298,34 +302,71 @@ class ApplicationController extends Controller
     {
         $request->merge(['is_cst' => $request->boolean('is_cst'), 'is_pwbd' => $request->boolean('is_pwbd'), 'needs_scribe' => $request->boolean('needs_scribe')]);
         $christian = $request->input('category_code') === Category::CHRISTIAN;
+        // Christian applicants who are not baptised themselves give a parent's baptism details instead.
+        $self = $christian && $request->input('baptised') !== 'no';
+        $parentGiven = fn (string $p) => $christian && ! $self && collect(self::PARENT_BAPTISM)
+            ->contains(fn ($f) => filled($request->input("{$p}_{$f}")));
+        // Baptism must be at least N years before the application.
+        $years = (int) config('admissions.baptism_min_years', 2);
+        $latestBaptism = now()->subYears($years)->toDateString();
+        $request->merge(['current_priest_mobile' => preg_replace('/\D/', '', (string) $request->input('current_priest_mobile')) ?: null]);
 
         $data = $request->validate([
             'category_code' => ['required', Rule::exists('categories', 'code')->whereNull('parent_code')->where('is_active', true)],
             'christian_subcategory' => [Rule::requiredIf($christian), 'nullable', Rule::exists('categories', 'code')->where('parent_code', Category::CHRISTIAN)],
             'is_cst' => ['boolean'],
-            'baptism_date' => [Rule::requiredIf($christian), 'nullable', 'date', 'before_or_equal:today'],
-            'baptism_church' => [Rule::requiredIf($christian), 'nullable', 'string', 'max:200'],
-            'baptism_place' => [Rule::requiredIf($christian), 'nullable', 'string', 'max:100'],
-            'baptism_priest' => [Rule::requiredIf($christian), 'nullable', 'string', 'max:100'],
+            'baptised' => ['nullable', Rule::in(['yes', 'no'])], // missing means yes
+            'baptism_date' => [Rule::requiredIf($self), 'nullable', 'date', 'before_or_equal:'.$latestBaptism],
+            'baptism_church' => [Rule::requiredIf($self), 'nullable', 'string', 'max:200'],
+            'baptism_place' => [Rule::requiredIf($self), 'nullable', 'string', 'max:100'],
+            'baptism_priest' => [Rule::requiredIf($self), 'nullable', 'string', 'max:100'],
             'baptism_priest_designation' => ['nullable', 'string', 'max:100'],
             'denomination' => [Rule::requiredIf($christian), 'nullable', 'string', 'max:100'],
             'current_church' => [Rule::requiredIf($christian), 'nullable', 'string', 'max:200'],
             'current_priest' => [Rule::requiredIf($christian), 'nullable', 'string', 'max:100'],
+            'current_church_address' => [Rule::requiredIf($christian), 'nullable', 'string', 'max:300'],
+            'current_priest_mobile' => [Rule::requiredIf($christian), 'nullable', 'regex:/^[6-9][0-9]{9}$/'],
+            'current_priest_email' => ['nullable', 'email:rfc', 'max:150'],
+            'father_baptism_date' => [Rule::requiredIf($parentGiven('father')), 'nullable', 'date', 'before_or_equal:'.$latestBaptism],
+            'father_baptism_church' => [Rule::requiredIf($parentGiven('father')), 'nullable', 'string', 'max:200'],
+            'father_baptism_place' => [Rule::requiredIf($parentGiven('father')), 'nullable', 'string', 'max:100'],
+            'father_baptism_priest' => [Rule::requiredIf($parentGiven('father')), 'nullable', 'string', 'max:100'],
+            'mother_baptism_date' => [Rule::requiredIf($parentGiven('mother')), 'nullable', 'date', 'before_or_equal:'.$latestBaptism],
+            'mother_baptism_church' => [Rule::requiredIf($parentGiven('mother')), 'nullable', 'string', 'max:200'],
+            'mother_baptism_place' => [Rule::requiredIf($parentGiven('mother')), 'nullable', 'string', 'max:100'],
+            'mother_baptism_priest' => [Rule::requiredIf($parentGiven('mother')), 'nullable', 'string', 'max:100'],
             'is_pwbd' => ['boolean'],
             'pwbd_type_id' => [Rule::requiredIf($request->boolean('is_pwbd')), 'nullable', Rule::exists('pwbd_types', 'id')->where('is_active', true)],
             'pwbd_percentage' => [Rule::requiredIf($request->boolean('is_pwbd')), 'nullable', 'integer', 'min:40', 'max:100'],
             'udid_no' => [Rule::requiredIf($request->boolean('is_pwbd')), 'nullable', 'string', 'max:30', 'regex:/^[A-Za-z0-9]+$/'],
             'needs_scribe' => ['boolean'],
-        ], ['pwbd_percentage.min' => 'PwBD category requires a benchmark disability of at least 40%.']);
+        ], [
+            'pwbd_percentage.min' => 'PwBD category requires a benchmark disability of at least 40%.',
+            '*baptism_date.before_or_equal' => "Baptism must be at least {$years} years before the date of application (on or before ".now()->subYears($years)->format('d M Y').').',
+            'current_priest_mobile.required' => "Enter the parish priest's mobile number.",
+            'current_priest_mobile.regex' => 'Enter a valid 10-digit mobile number.',
+        ]);
+        if ($christian && ! $self && ! $parentGiven('father') && ! $parentGiven('mother')) {
+            throw ValidationException::withMessages(['father_baptism_date' => 'Give the baptism details of at least one parent.']);
+        }
 
         $docsBefore = $app->requiredDocumentTypes();
         $app->category_code = $data['category_code'];
         $app->christian_subcategory = $christian ? $data['christian_subcategory'] : null;
         $app->is_cst = $christian && $data['is_cst'];
-        $app->baptism_details = $christian ? collect($data)->only([
-            'baptism_date', 'baptism_church', 'baptism_place', 'baptism_priest', 'baptism_priest_designation',
-            'denomination', 'current_church', 'current_priest',
-        ])->all() : null;
+        $keep = ['baptised', 'denomination', 'current_church', 'current_church_address', 'current_priest', 'current_priest_mobile', 'current_priest_email'];
+        if ($self) {
+            array_push($keep, 'baptism_date', 'baptism_church', 'baptism_place', 'baptism_priest', 'baptism_priest_designation');
+        } else {
+            foreach (['father', 'mother'] as $p) {
+                if ($parentGiven($p)) {
+                    foreach (self::PARENT_BAPTISM as $f) {
+                        $keep[] = "{$p}_{$f}";
+                    }
+                }
+            }
+        }
+        $app->baptism_details = $christian ? ['baptised' => $self ? 'yes' : 'no'] + collect($data)->only($keep)->all() : null;
         $app->is_pwbd = $data['is_pwbd'];
         $app->pwbd_type_id = $data['is_pwbd'] ? $data['pwbd_type_id'] : null;
         $app->pwbd_percentage = $data['is_pwbd'] ? $data['pwbd_percentage'] : null;

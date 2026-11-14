@@ -31,7 +31,7 @@ class ScrutinyController extends Controller
             'identity' => 'Name, photo and signature are in order',
         ],
         Scrutiny::RELIGIOUS => [
-            'baptism' => 'Baptism certificate is valid and matches the details entered',
+            'baptism' => 'Baptism certificate (own, or a parent\'s if not baptised) is valid, matches the details and is at least 2 years old',
             'church_letter' => 'Letter from the priest / church membership is valid',
             'denomination' => 'Denomination matches the sub-category (CNI / CNID / Other)',
             'cst' => 'ST certificate checked (CST applicants only)',
