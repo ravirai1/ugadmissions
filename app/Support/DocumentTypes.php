@@ -13,6 +13,7 @@ final class DocumentTypes
         'cuet_scorecard' => ['CUET (UG) 2027 scorecard', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'csas_preference' => ['DU CSAS (UG) preference page', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'baptism' => ['Baptism certificate', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
+        'parent_baptism' => ["Parent's baptism certificate", ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'church_letter' => ['Letter from priest / church membership', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'st_certificate' => ['ST certificate (for CST)', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'category_certificate' => ['Category certificate (OBC-NCL / SC / ST / EWS)', ['jpg', 'jpeg', 'png', 'pdf'], 2048],

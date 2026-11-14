@@ -37,6 +37,9 @@ return [
     // Application numbers: prefix + 5-digit serial, e.g. UGADM2700001.
     'application_no_prefix' => 'UGADM27',
 
+    // Christian category: baptism (own or parent's) must be at least this many years before the application.
+    'baptism_min_years' => (int) env('BAPTISM_MIN_YEARS', 2),
+
     'contact' => [
         'email' => env('ADMISSIONS_EMAIL', 'admissions@ststephens.edu'),
         'phone' => env('ADMISSIONS_PHONE', '+91-11-27667271'),

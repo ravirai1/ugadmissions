@@ -46,10 +46,7 @@
     <table class="table table-sm table-bordered preview-table mb-0">
         <tr><th>Category</th><td>{{ $categoryNames[$app->category_code] ?? '' }}@if ($app->christian_subcategory) – {{ $categoryNames[$app->christian_subcategory] ?? '' }}@endif @if ($app->is_cst) (CST) @endif</td></tr>
         @if ($app->isChristian())
-            <tr><th>Baptism</th><td>{{ $b['baptism_date'] ?? '' }}, {{ $b['baptism_church'] ?? '' }}, {{ $b['baptism_place'] ?? '' }}</td></tr>
-            <tr><th>Baptised by</th><td>{{ $b['baptism_priest_designation'] ?? '' }} {{ $b['baptism_priest'] ?? '' }}</td></tr>
-            <tr><th>Denomination</th><td>{{ $b['denomination'] ?? '' }}</td></tr>
-            <tr><th>Present church / priest</th><td>{{ $b['current_church'] ?? '' }} / {{ $b['current_priest'] ?? '' }}</td></tr>
+            @include('application._baptism-rows')
         @endif
         <tr><th>PwBD</th><td>@if ($app->is_pwbd){{ $app->pwbdType?->name }}, {{ $app->pwbd_percentage }}%, UDID {{ $app->udid_no }}{{ $app->needs_scribe ? ', needs scribe/extra time' : '' }}@else No @endif</td></tr>
     </table>

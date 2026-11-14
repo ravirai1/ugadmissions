@@ -4,7 +4,7 @@
 @php
     $badge = ['pending' => 'warning', 'query' => 'info', 'approved' => 'success', 'rejected' => 'danger'];
     $doc = fn ($t) => isset($uploaded[$t]) ? '<a href="'.e(route('admin.applications.document', $uploaded[$t])).'" target="_blank" rel="noopener">'.e(\App\Support\DocumentTypes::label($t)).'</a>' : '<span class="text-danger">'.e(\App\Support\DocumentTypes::label($t)).' (missing)</span>';
-    $keyDocs = $s->type === 'academic' ? ['class12', 'cuet_scorecard', 'csas_preference', 'class10', 'photo'] : ['baptism', 'church_letter', 'st_certificate'];
+    $keyDocs = $s->type === 'academic' ? ['class12', 'cuet_scorecard', 'csas_preference', 'class10', 'photo'] : ['baptism', 'parent_baptism', 'church_letter', 'st_certificate'];
     $b = $app->baptism_details ?? [];
 @endphp
 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
@@ -64,10 +64,7 @@
                     <h5 class="card-title">Religious details</h5>
                     <table class="table table-sm table-bordered small mb-0">
                         <tr><th style="width:35%">Category</th><td>Christian – {{ $categoryNames[$app->christian_subcategory] ?? $app->christian_subcategory }}{{ $app->is_cst ? ' (CST – Christian ST)' : '' }}</td></tr>
-                        <tr><th>Baptism</th><td>{{ $b['baptism_date'] ?? '' }}, {{ $b['baptism_church'] ?? '' }}, {{ $b['baptism_place'] ?? '' }}</td></tr>
-                        <tr><th>Baptised by</th><td>{{ $b['baptism_priest_designation'] ?? '' }} {{ $b['baptism_priest'] ?? '' }}</td></tr>
-                        <tr><th>Denomination</th><td>{{ $b['denomination'] ?? '' }}</td></tr>
-                        <tr><th>Present church / priest</th><td>{{ $b['current_church'] ?? '' }} / {{ $b['current_priest'] ?? '' }}</td></tr>
+                        @include('application._baptism-rows')
                     </table>
                 </div>
             </div>

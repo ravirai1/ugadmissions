@@ -47,7 +47,7 @@ trait FillsApplication
         return array_merge([
             'category_code' => Category::CHRISTIAN, 'christian_subcategory' => 'CNI', 'baptism_date' => '2008-08-01',
             'baptism_church' => 'Cathedral Church of the Redemption', 'baptism_place' => 'New Delhi', 'baptism_priest' => 'A. Kumar',
-            'denomination' => 'CNI', 'current_church' => 'St. James Church', 'current_priest' => 'P. Singh',
+            'denomination' => 'CNI', 'current_church' => 'St. James Church', 'current_priest' => 'P. Singh', 'current_church_address' => 'Church Road, Delhi 110054', 'current_priest_mobile' => '9810011122', 'current_priest_email' => 'stjames@example.org',
         ], $o);
     }
 

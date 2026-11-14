@@ -80,6 +80,33 @@ class ApplicationFormTest extends TestCase
         $this->assertContains('st_certificate', $app->requiredDocumentTypes());
     }
 
+    public function test_baptism_two_year_rule_and_parent_baptism(): void
+    {
+        $this->go('basic', $this->basic());
+        $this->go('address', $this->address());
+        $this->actingAs($this->user)->get('/application/category')->assertOk()->assertSee("Parish priest's mobile", false)->assertSee('at least 2 years');
+
+        // own baptism less than 2 years ago is refused; parish priest mobile is required
+        $this->go('category', $this->christian(['baptism_date' => now()->subYear()->toDateString()]))->assertSessionHasErrors('baptism_date');
+        $this->go('category', $this->christian(['current_priest_mobile' => '', 'current_church_address' => '']))->assertSessionHasErrors(['current_priest_mobile', 'current_church_address']);
+
+        // not baptised: needs at least one parent's full baptism details, also 2+ years old
+        $notBaptised = $this->christian(['baptised' => 'no', 'baptism_date' => '', 'baptism_church' => '', 'baptism_place' => '', 'baptism_priest' => '']);
+        $this->go('category', $notBaptised)->assertSessionHasErrors('father_baptism_date');
+        $this->go('category', $notBaptised + ['mother_baptism_date' => '1985-04-07'])->assertSessionHasErrors(['mother_baptism_church', 'mother_baptism_place', 'mother_baptism_priest']);
+        $mother = ['mother_baptism_church' => 'St. Thomas Church', 'mother_baptism_place' => 'Kottayam', 'mother_baptism_priest' => 'Rev. K. Jacob'];
+        $this->go('category', $notBaptised + $mother + ['mother_baptism_date' => now()->subMonths(6)->toDateString()])->assertSessionHasErrors('mother_baptism_date');
+        $this->go('category', $notBaptised + $mother + ['mother_baptism_date' => '1985-04-07'])->assertSessionHasNoErrors();
+
+        $app = Application::first();
+        $this->assertFalse($app->isBaptised());
+        $this->assertSame('Kottayam', $app->baptism_details['mother_baptism_place']);
+        $this->assertArrayNotHasKey('baptism_church', $app->baptism_details);
+        $this->assertContains('parent_baptism', $app->requiredDocumentTypes());
+        $this->assertNotContains('baptism', $app->requiredDocumentTypes());
+        $this->assertSame('9810011122', $app->baptism_details['current_priest_mobile']);
+    }
+
     public function test_pwbd_requires_40_percent_and_udid(): void
     {
         $this->go('basic', $this->basic());
