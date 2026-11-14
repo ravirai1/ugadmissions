@@ -14,6 +14,7 @@ use App\Notifications\QueryReminder;
 use App\Services\Payments\GatewayResult;
 use App\Services\Payments\PaymentService;
 use App\Services\ScrutinyService;
+use App\Services\ScrutinyVerifier;
 use App\Support\Roles;
 use Database\Seeders\MasterDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,6 +50,14 @@ class ScrutinyTest extends TestCase
     private function as(Admin $a)
     {
         return $this->actingAs($a, 'admin')->withSession(['admin_otp_verified' => true, 'admin_last_activity' => time()]);
+    }
+
+    /** Tick OK for every item to verify. */
+    private function allOk(Scrutiny $s, array $override = []): array
+    {
+        $v = collect(app(ScrutinyVerifier::class)->fields($s->fresh()))->map(fn () => ['ok' => '1'])->all();
+
+        return array_replace($v, $override);
     }
 
     private function dept(string $courseCode): int
@@ -104,20 +113,87 @@ class ScrutinyTest extends TestCase
         $app = $this->paid();
         $s = $this->academic($app, 'BSC-PHY');
         $phy = $this->staff(Roles::DEPARTMENT, $this->dept('BSC-PHY'));
+        $url = "$this->base/scrutiny/item/{$s->id}/decide";
+        $before = $app->class12Marks()->pluck('marks_obtained', 'id')->all();
 
-        $this->as($phy)->post("$this->base/scrutiny/item/{$s->id}/decide", ['status' => 'rejected'])->assertSessionHasErrors('remarks');
-        $this->as($phy)->post("$this->base/scrutiny/item/{$s->id}/decide", ['status' => 'approved', 'verified_cuet_score' => 698.5, 'checklist' => ['class12_marks', 'cuet_scores']])
+        $this->as($phy)->get("$this->base/scrutiny/item/{$s->id}")->assertOk()->assertSee('Verify the data')->assertDontSee('value="rejected"', false)
+            ->assertSee('Academic record')->assertSee('Subject combination')->assertSee('PCM')->assertSee('Class 12 subject')->assertSee('CUET paper');
+        // documents may be framed by the portal itself only
+        $doc = $app->documents()->first();
+        if ($doc) {
+            $r = $this->as($phy)->get("$this->base/applications/documents/{$doc->id}")->assertOk()->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+            $this->assertStringContainsString("frame-ancestors 'self'", $r->headers->get('Content-Security-Policy'));
+        }
+        $this->get('/')->assertHeader('X-Frame-Options', 'DENY');
+        // only the TFA admin can reject; review needs a comment; approval needs every item verified
+        $this->as($phy)->post($url, ['action' => 'rejected', 'remarks' => 'x'])->assertForbidden();
+        $this->as($phy)->post($url, ['action' => 'review'])->assertSessionHasErrors('review_comment');
+        $this->as($phy)->post($url, ['action' => 'approved'])->assertSessionHasErrors('action');
+
+        // verify in parts: one CUET paper corrected, a Class 12 mark corrected, the rest OK
+        $fields = app(ScrutinyVerifier::class)->fields($s);
+        $cuetKey = collect($fields)->keys()->first(fn ($k) => str_starts_with($k, 'cuet_'));
+        $c12Key = collect($fields)->keys()->first(fn ($k) => str_starts_with($k, 'c12_'));
+        $this->as($phy)->post($url, ['action' => 'save', 'verify' => [$cuetKey => ['value' => '999']]])->assertSessionHasErrors("verify.$cuetKey.value");
+        $this->as($phy)->post($url, ['action' => 'save', 'verify' => [$cuetKey => ['value' => '150']]])->assertSessionHasNoErrors();
+        $this->assertSame(1, $s->verifications()->count());
+        $this->as($phy)->post($url, ['action' => 'approved', 'checklist' => ['class12_marks'], 'verify' => $this->allOk($s, [$cuetKey => ['value' => '150'], $c12Key => ['value' => '50']])])
             ->assertSessionHasNoErrors();
         $s->refresh();
         $this->assertSame('approved', $s->status);
-        $this->assertSame('698.50', $s->verified_cuet_score);
         $this->assertSame($phy->id, $s->reviewed_by);
+        $this->assertSame('corrected', $s->verifications()->where('field', $cuetKey)->value('result'));
+        $expected = collect($fields)->filter(fn ($f, $k) => str_starts_with($k, 'cuet_'))->map(fn ($f, $k) => $k === $cuetKey ? 150 : (float) $f['value'])->sum();
+        $this->assertEquals($expected, (float) $s->verified_cuet_score);
+        $this->assertNotNull($s->verified_class12_percent);
+        // the applicant's own data is untouched
+        $this->assertEquals($before, $app->class12Marks()->pluck('marks_obtained', 'id')->all());
 
-        // locked for the department; admin can reopen
-        $this->as($phy)->post("$this->base/scrutiny/item/{$s->id}/decide", ['status' => 'rejected', 'remarks' => 'x'])->assertForbidden();
+        // locked for the department; TFA admin can reopen
+        $this->as($phy)->post($url, ['action' => 'review', 'review_comment' => 'x'])->assertForbidden();
         $this->as($phy)->post("$this->base/scrutiny/item/{$s->id}/reopen")->assertForbidden();
-        $this->as($this->staff(Roles::ADMIN))->post("$this->base/scrutiny/item/{$s->id}/reopen")->assertSessionHasNoErrors();
+        $this->as($this->staff(Roles::TFA))->post("$this->base/scrutiny/item/{$s->id}/reopen")->assertSessionHasNoErrors();
         $this->assertSame('pending', $s->refresh()->status);
+        $this->assertNull($s->verified_cuet_score);
+    }
+
+    public function test_religious_team_sees_only_basic_and_religious_details(): void
+    {
+        $app = $this->paid();
+        $rel = $app->scrutinies()->where('type', 'religious')->first();
+        $relStaff = $this->staff(Roles::RELIGIOUS);
+        $this->as($relStaff)->get("$this->base/scrutiny/item/{$rel->id}")->assertOk()
+            ->assertSee('Applicant')->assertSee('Date of birth')->assertSee('Verify the data')
+            ->assertDontSee('Full application')->assertDontSee('Class 12 subject')->assertDontSee('B.Sc. (Hons.) Physics');
+        $this->as($relStaff)->get("$this->base/applications/{$app->id}")->assertRedirect(route('admin.scrutiny.show', $rel));
+        $marksheet = $app->documents()->create(['type' => 'class12', 'path' => 'x/m.png', 'original_name' => 'm.png', 'mime' => 'image/png', 'size' => 1, 'sha256' => str_repeat('a', 64)]);
+        $this->as($relStaff)->get("$this->base/applications/documents/{$marksheet->id}")->assertNotFound();
+        // admins still see everything
+        $this->as($this->staff(Roles::ADMIN))->get("$this->base/scrutiny/item/{$rel->id}")->assertOk()->assertSee('Full application');
+    }
+
+    public function test_marked_for_review_goes_to_tfa_admin_who_has_final_say(): void
+    {
+        $app = $this->paid();
+        $s = $this->academic($app, 'BSC-PHY');
+        $phy = $this->staff(Roles::DEPARTMENT, $this->dept('BSC-PHY'));
+        $tfa = $this->staff(Roles::TFA);
+        $url = "$this->base/scrutiny/item/{$s->id}/decide";
+
+        $this->as($phy)->post($url, ['action' => 'review', 'review_comment' => 'Marksheet looks altered.'])->assertSessionHasNoErrors();
+        $this->assertSame('review', $s->refresh()->status);
+        $this->as($phy)->post($url, ['action' => 'approved', 'verify' => $this->allOk($s)])->assertForbidden();
+
+        $this->as($this->staff(Roles::DEPARTMENT, $this->dept('BSC-PHY')))->get("$this->base/scrutiny/overview")->assertForbidden();
+        $this->as($tfa)->get("$this->base/scrutiny/overview")->assertOk()->assertSee('Marksheet looks altered.')->assertSee($app->application_no);
+        $this->as($tfa)->get("$this->base/scrutiny/academic")->assertOk()->assertSee($app->application_no); // TFA to-do = review items
+        $this->as($tfa)->get("$this->base/scrutiny/item/{$s->id}")->assertOk()->assertSee('value="rejected"', false);
+        $this->as($tfa)->post($url, ['action' => 'rejected'])->assertSessionHasErrors('remarks');
+        $this->as($tfa)->post($url, ['action' => 'rejected', 'remarks' => 'Class 12 marksheet is not genuine.'])->assertSessionHasNoErrors();
+        $s->refresh();
+        $this->assertSame('rejected', $s->status);
+        $this->assertSame($tfa->id, $s->reviewed_by);
+        $this->as($tfa)->get("$this->base/scrutiny/overview")->assertSee('Class 12 marksheet is not genuine.');
     }
 
     public function test_query_secure_link_reply_adds_document_to_profile(): void
@@ -140,7 +216,7 @@ class ScrutinyTest extends TestCase
         $this->assertNotSame($token, $q->token_hash, 'only a hash of the token is stored');
 
         // cannot decide while the query is open
-        $this->as($phy)->post("$this->base/scrutiny/item/{$s->id}/decide", ['status' => 'approved', 'verified_cuet_score' => 700])->assertSessionHasErrors('status');
+        $this->as($phy)->post("$this->base/scrutiny/item/{$s->id}/decide", ['action' => 'approved', 'verify' => $this->allOk($s)])->assertSessionHasErrors('action');
 
         $this->get("/query/{$q->id}/wrong-token")->assertForbidden();
         $this->get("/query/{$q->id}/$token")->assertOk()->assertSee('Please upload a clear Class 12 marksheet.');
@@ -203,16 +279,28 @@ class ScrutinyTest extends TestCase
 
         $this->assertFalse($app->refresh()->load('scrutinies')->eligibleForInterview($phyChoice->applicationCourse));
 
-        $this->as($admin)->post("$this->base/scrutiny/item/{$phyChoice->id}/decide", ['status' => 'approved', 'verified_cuet_score' => 700]);
+        $this->as($admin)->post("$this->base/scrutiny/item/{$phyChoice->id}/decide", ['action' => 'approved', 'verify' => $this->allOk($phyChoice)])->assertSessionHasNoErrors();
         $app->refresh()->load('scrutinies');
         $this->assertFalse($app->eligibleForInterview($phyChoice->applicationCourse), 'religious scrutiny still pending');
 
         $rel = $app->scrutinies->firstWhere('type', 'religious');
-        $this->as($this->staff(Roles::RELIGIOUS))->post("$this->base/scrutiny/item/{$rel->id}/decide", ['status' => 'rejected', 'remarks' => 'Baptism certificate not genuine.']);
+        $relStaff = $this->staff(Roles::RELIGIOUS);
+        $relUrl = "$this->base/scrutiny/item/{$rel->id}/decide";
+        // religious staff verify: sub-category found to be CNID, not CNI
+        $this->as($relStaff)->post($relUrl, ['action' => 'approved', 'verify' => $this->allOk($rel, ['subcategory' => ['value' => 'CNID']])])->assertSessionHasNoErrors();
+        $app->refresh()->load('scrutinies');
+        $this->assertSame('CNID', $app->meritCategory(), 'merit uses the verified sub-category');
+        $this->assertSame('CNI', $app->christian_subcategory, 'applicant data unchanged');
+        $this->assertTrue($app->eligibleForInterview($phyChoice->applicationCourse->refresh()));
+
+        // only the TFA admin can reject; then the applicant competes as General
+        $this->as($relStaff)->post($relUrl, ['action' => 'rejected', 'remarks' => 'x'])->assertForbidden();
+        $tfa = $this->staff(Roles::TFA);
+        $this->as($tfa)->post("$this->base/scrutiny/item/{$rel->id}/reopen");
+        $this->as($tfa)->post($relUrl, ['action' => 'rejected', 'remarks' => 'Baptism certificate not genuine.'])->assertSessionHasNoErrors();
         $app->refresh()->load('scrutinies');
         $this->assertSame('UR', $app->meritCategory());
         $this->assertTrue($app->religiousCleared());
-        $this->assertTrue($app->eligibleForInterview($phyChoice->applicationCourse->refresh()));
 
         $this->actingAs($this->user)->get('/applicant/dashboard')->assertSee('Not accepted – treated as General');
     }

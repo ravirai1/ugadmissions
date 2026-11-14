@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Applicant\ApplicationController as ApplicantForm;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\Application;
 use App\Models\Category;
 use App\Models\Course;
 use App\Models\Department;
@@ -13,6 +14,7 @@ use App\Models\ScrutinyQuery;
 use App\Models\Subject;
 use App\Services\Eligibility;
 use App\Services\ScrutinyService;
+use App\Services\ScrutinyVerifier;
 use App\Support\DocumentTypes;
 use App\Support\Roles;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +24,9 @@ use Illuminate\Validation\Rule;
 class ScrutinyController extends Controller
 {
     /** Checklist items shown to reviewers. */
+    /** Documents the religious team works with. */
+    public const RELIGIOUS_DOCS = ['photo', 'signature', 'baptism', 'parent_baptism', 'church_letter', 'st_certificate', 'other'];
+
     public const CHECKLIST = [
         Scrutiny::ACADEMIC => [
             'class12_marks' => 'Class 12 subjects and marks match the marksheet',
@@ -47,9 +52,14 @@ class ScrutinyController extends Controller
 
         $q = $this->queue($admin, $type)->with(['application.user', 'applicationCourse.course', 'reviewer']);
         if ($s = $request->query('status')) {
-            $s === 'reply' ? $q->where('reply_received', true) : $q->where('status', $s);
+            match ($s) {
+                'all' => null,
+                'reply' => $q->where('reply_received', true),
+                default => $q->where('status', $s),
+            };
         } else {
-            $q->whereIn('status', [Scrutiny::PENDING, Scrutiny::QUERY]); // to-do list by default
+            // to-do list by default: the TFA admin's is what was marked for review
+            $q->whereIn('status', $admin->role === Roles::TFA ? [Scrutiny::REVIEW] : [Scrutiny::PENDING, Scrutiny::QUERY]);
         }
         if ($type === Scrutiny::ACADEMIC && ($course = $request->integer('course'))) {
             $q->whereHas('applicationCourse', fn ($c) => $c->where('course_id', $course));
@@ -79,7 +89,7 @@ class ScrutinyController extends Controller
         $admin = $request->user('admin');
         abort_unless($this->canAccess($admin, $scrutiny), 404);
 
-        $app = $scrutiny->application->load(['user', 'class12Marks.class12Subject.subject', 'cuetScores.subject', 'courses.course', 'curState', 'curDistrict', 'permState', 'permDistrict', 'domicileState', 'pwbdType', 'scrutinies.applicationCourse.course', 'scrutinies.reviewer']);
+        $app = $scrutiny->application->load(['user', 'class12Marks.class12Subject.subject', 'cuetScores.subject', 'courses.course', 'curState', 'curDistrict', 'permState', 'permDistrict', 'domicileState', 'pwbdType', 'scrutinies.applicationCourse.course', 'scrutinies.reviewer', 'scrutinies.reviewFlaggedBy']);
         $data = [
             's' => $scrutiny->load(['queries.attachments', 'queries.raisedBy', 'applicationCourse.course']),
             'app' => $app,
@@ -90,9 +100,15 @@ class ScrutinyController extends Controller
             'uploaded' => $app->documents()->get()->keyBy('type'),
             'required' => $app->requiredDocumentTypes(),
             'checklist' => self::CHECKLIST[$scrutiny->type],
-            'docTypes' => collect(DocumentTypes::TYPES)->map(fn ($t) => $t[0])->all(),
-            'canDecide' => ! $scrutiny->isDecided() || $admin->hasRole(Roles::ADMIN),
-            'isAdmin' => $admin->hasRole(Roles::ADMIN),
+            'docTypes' => collect(DocumentTypes::TYPES)->map(fn ($t) => $t[0])
+                ->when($admin->role === Roles::RELIGIOUS, fn ($c) => $c->only(self::RELIGIOUS_DOCS))->all(),
+            'canDecide' => $scrutiny->isOpenForStaff() || $admin->hasRole(Roles::TFA),
+            'isTfa' => $admin->hasRole(Roles::TFA),
+            // the religious team sees basic details and the religious section only
+            'religiousOnly' => $admin->role === Roles::RELIGIOUS,
+            'isAdmin' => $admin->hasRole(Roles::ADMIN, Roles::TFA),
+            'fields' => app(ScrutinyVerifier::class)->fields($scrutiny),
+            'verified' => $scrutiny->verifications()->with('verifier')->get()->keyBy('field'),
         ];
 
         if ($scrutiny->type === Scrutiny::ACADEMIC) {
@@ -117,35 +133,92 @@ class ScrutinyController extends Controller
         return view('admin.scrutiny.show', $data);
     }
 
-    public function decide(Request $request, Scrutiny $scrutiny)
+    /**
+     * One form for the scrutiny page: save the item-by-item verification, and optionally
+     * approve, mark for review (to the TFA admin) or, for the TFA admin only, reject.
+     */
+    public function decide(Request $request, Scrutiny $scrutiny, ScrutinyVerifier $verifier)
     {
         $admin = $request->user('admin');
         abort_unless($this->canAccess($admin, $scrutiny), 404);
-        abort_if($scrutiny->isDecided() && ! $admin->hasRole(Roles::ADMIN), 403, 'This decision is locked. Ask an admin to reopen it.');
+        $tfa = $admin->hasRole(Roles::TFA);
+        abort_unless($tfa || $scrutiny->isOpenForStaff(), 403, 'This record is with the TFA admin now. Only the TFA admin can change it.');
 
         $data = $request->validate([
-            'status' => ['required', Rule::in([Scrutiny::APPROVED, Scrutiny::REJECTED])],
-            'remarks' => [Rule::requiredIf($request->input('status') === Scrutiny::REJECTED), 'nullable', 'string', 'max:2000'],
+            'action' => ['required', Rule::in(['save', Scrutiny::APPROVED, Scrutiny::REVIEW, Scrutiny::REJECTED])],
+            'verify' => ['nullable', 'array'],
+            'remarks' => [Rule::requiredIf($request->input('action') === Scrutiny::REJECTED), 'nullable', 'string', 'max:2000'],
+            'review_comment' => [Rule::requiredIf($request->input('action') === Scrutiny::REVIEW), 'nullable', 'string', 'max:2000'],
             'checklist' => ['nullable', 'array'],
             'checklist.*' => ['string', Rule::in(array_keys(self::CHECKLIST[$scrutiny->type]))],
-            'verified_cuet_score' => [Rule::requiredIf($scrutiny->type === Scrutiny::ACADEMIC && $request->input('status') === Scrutiny::APPROVED), 'nullable', 'numeric', 'min:0', 'max:1000'],
-        ], ['remarks.required' => 'Give the reason for rejection.', 'verified_cuet_score.required' => 'Enter the verified CUET total.']);
+        ], ['remarks.required' => 'Write the final comment (reason for rejection).', 'review_comment.required' => 'Write a comment for the TFA admin saying what needs review.']);
+        abort_if($data['action'] === Scrutiny::REJECTED && ! $tfa, 403, 'Only the TFA admin can reject. Mark it for review instead.');
 
-        if ($scrutiny->queries()->where('status', ScrutinyQuery::OPEN)->exists()) {
-            return back()->withErrors(['status' => 'Close the open query before deciding.']);
+        $saved = $verifier->save($scrutiny, $data['verify'] ?? [], $admin);
+        if ($data['action'] === 'save') {
+            $scrutiny->update(['checklist' => $data['checklist'] ?? $scrutiny->checklist]);
+
+            return back()->with('status', "Verification saved ({$saved} items).");
         }
 
-        $this->service->decide($scrutiny, $data, $admin);
+        if ($data['action'] !== Scrutiny::REVIEW && $scrutiny->queries()->where('status', ScrutinyQuery::OPEN)->exists()) {
+            return back()->withErrors(['action' => 'Close the open query before deciding.']);
+        }
+        if ($data['action'] === Scrutiny::APPROVED && ($missing = $verifier->missing($scrutiny))) {
+            return back()->withErrors(['action' => 'Verify every item before approving: '.count($missing).' item(s) still to check.']);
+        }
+
+        match ($data['action']) {
+            Scrutiny::REVIEW => $this->service->markForReview($scrutiny, $data['review_comment'], $admin),
+            default => $this->service->decide($scrutiny, ['status' => $data['action']] + $data, $admin),
+        };
+        if ($data['action'] === Scrutiny::APPROVED) {
+            $verifier->finalise($scrutiny);
+        }
 
         return redirect()->route('admin.scrutiny.index', $scrutiny->type)
             ->with('status', $scrutiny->application->application_no.': '.$scrutiny->statusLabel().'.');
+    }
+
+    /** TFA admin and admin: both scrutiny streams at a glance. */
+    public function overview()
+    {
+        $paid = Application::whereNotNull('fee_paid_at');
+        $by = fn (string $type) => Scrutiny::where('type', $type)->whereHas('application', fn ($a) => $a->whereNotNull('fee_paid_at'));
+        $streams = [];
+        foreach ([Scrutiny::ACADEMIC, Scrutiny::RELIGIOUS] as $type) {
+            $counts = $by($type)->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
+            $streams[$type] = [
+                'total' => $counts->sum(),
+                'counts' => $counts,
+                'completed' => ($counts[Scrutiny::APPROVED] ?? 0) + ($counts[Scrutiny::REJECTED] ?? 0),
+                'pending' => ($counts[Scrutiny::PENDING] ?? 0) + ($counts[Scrutiny::QUERY] ?? 0),
+                'review' => $counts[Scrutiny::REVIEW] ?? 0,
+                'started' => $by($type)->whereIn('status', [Scrutiny::PENDING, Scrutiny::QUERY])->has('verifications')->count(),
+            ];
+        }
+        $courseRows = Scrutiny::where('scrutinies.type', Scrutiny::ACADEMIC)
+            ->join('application_courses', 'application_courses.id', '=', 'scrutinies.application_course_id')
+            ->join('courses', 'courses.id', '=', 'application_courses.course_id')
+            ->whereHas('application', fn ($a) => $a->whereNotNull('fee_paid_at'))
+            ->selectRaw('courses.name as course, scrutinies.status, count(*) as n')->groupBy('courses.name', 'scrutinies.status')->get()
+            ->groupBy('course')->map(fn ($g) => $g->pluck('n', 'status'))->sortKeys();
+
+        return view('admin.scrutiny.overview', [
+            'received' => (clone $paid)->count(),
+            'christian' => (clone $paid)->where('category_code', Category::CHRISTIAN)->count(),
+            'streams' => $streams,
+            'courseRows' => $courseRows,
+            'review' => Scrutiny::where('status', Scrutiny::REVIEW)->with('application.user', 'applicationCourse.course', 'reviewFlaggedBy')->orderBy('review_at')->get(),
+            'rejected' => Scrutiny::where('status', Scrutiny::REJECTED)->with('application.user', 'applicationCourse.course', 'reviewer')->latest('reviewed_at')->limit(50)->get(),
+        ]);
     }
 
     public function query(Request $request, Scrutiny $scrutiny)
     {
         $admin = $request->user('admin');
         abort_unless($this->canAccess($admin, $scrutiny), 404);
-        abort_if($scrutiny->isDecided() && ! $admin->hasRole(Roles::ADMIN), 403);
+        abort_unless($scrutiny->isOpenForStaff() || $admin->hasRole(Roles::TFA), 403);
 
         $data = $request->validate([
             'message' => ['required', 'string', 'min:10', 'max:2000'],
@@ -177,6 +250,7 @@ class ScrutinyController extends Controller
     private function canUseQueue(Admin $admin, string $type): bool
     {
         return $admin->hasRole(Roles::ADMIN)
+            || $admin->hasRole(Roles::TFA)
             || ($type === Scrutiny::ACADEMIC && $admin->role === Roles::DEPARTMENT)
             || ($type === Scrutiny::RELIGIOUS && $admin->role === Roles::RELIGIOUS);
     }
@@ -193,7 +267,7 @@ class ScrutinyController extends Controller
     private function queue(Admin $admin, string $type): Builder
     {
         $q = Scrutiny::query()->where('type', $type)->whereHas('application', fn ($a) => $a->whereNotNull('fee_paid_at'));
-        if ($type === Scrutiny::ACADEMIC && ! $admin->hasRole(Roles::ADMIN)) {
+        if ($type === Scrutiny::ACADEMIC && ! $admin->hasRole(Roles::ADMIN, Roles::TFA)) {
             $q->whereHas('applicationCourse.course', fn ($c) => $c->where('department_id', $admin->department_id ?? 0));
         }
 

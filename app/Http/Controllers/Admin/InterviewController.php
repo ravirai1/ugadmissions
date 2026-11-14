@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\CallLetter;
 use App\Models\Course;
 use App\Services\InterviewService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /** Admin: issue interview call letters course-wise and finalise marks. */
 class InterviewController extends Controller
@@ -23,6 +25,28 @@ class InterviewController extends Controller
             'counts' => $counts,
             'eligible' => Course::orderBy('sort')->get()->mapWithKeys(fn ($c) => [$c->id => $this->interviews->eligible($c)->count()]),
             'locked' => InterviewService::lockedCourses(),
+        ]);
+    }
+
+    /** Attendance summary: present, absent and not marked, by date and course, with marks progress. */
+    public function summary()
+    {
+        $rows = CallLetter::query()
+            ->selectRaw("interview_date, course_id, count(*) as issued,
+                sum(case when attendance = 'present' then 1 else 0 end) as present,
+                sum(case when attendance = 'absent' then 1 else 0 end) as absent,
+                sum(case when attendance is null then 1 else 0 end) as unmarked,
+                sum(case when exists (select 1 from interview_marks m where m.call_letter_id = call_letters.id) then 1 else 0 end) as marked")
+            ->groupBy('interview_date', 'course_id')->orderBy('interview_date')->orderBy('course_id')->get();
+        $courses = Course::pluck('name', 'id');
+        $sum = fn ($c, $k) => (int) $c->sum($k);
+        $totals = ['issued' => $sum($rows, 'issued'), 'present' => $sum($rows, 'present'), 'absent' => $sum($rows, 'absent'), 'unmarked' => $sum($rows, 'unmarked'), 'marked' => $sum($rows, 'marked')];
+
+        return view('admin.interviews.summary', [
+            'byDate' => $rows->groupBy(fn ($r) => Carbon::parse($r->interview_date)->toDateString()),
+            'byCourse' => $rows->groupBy('course_id')->map(fn ($g) => ['issued' => $sum($g, 'issued'), 'present' => $sum($g, 'present'), 'absent' => $sum($g, 'absent'), 'unmarked' => $sum($g, 'unmarked'), 'marked' => $sum($g, 'marked')]),
+            'courses' => $courses,
+            'totals' => $totals,
         ]);
     }
 
@@ -59,7 +83,7 @@ class InterviewController extends Controller
     public function cancel(CallLetter $letter)
     {
         abort_if($letter->attendance !== null || InterviewService::isLocked($letter->course_id), 422, 'Attendance is already marked for this call letter.');
-        \App\Models\AuditLog::record('interview.cancel', $letter, ['letter_no' => $letter->letter_no]);
+        AuditLog::record('interview.cancel', $letter, ['letter_no' => $letter->letter_no]);
         $letter->delete();
 
         return back()->with('status', 'Call letter cancelled.');

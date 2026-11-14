@@ -2,6 +2,7 @@
 @section('title', 'Interview Call Letters')
 @section('content')
 <div class="card"><div class="card-body">
+    <a href="{{ route('admin.interviews.summary') }}" class="btn btn-primary btn-sm float-end ms-3"><i class="fas fa-chart-bar me-1"></i>Attendance summary</a>
     <p class="small text-muted">Candidates become eligible for a course's interview when their fee is paid, academic scrutiny for that course is approved and (for Christian applicants) religious scrutiny is decided. Finalise marks once interviews are over; only finalised courses go into seat allotment.</p>
     <div class="table-responsive">
         <table class="table table-sm table-compact align-middle">

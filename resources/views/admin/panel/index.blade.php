@@ -31,7 +31,7 @@
                         @php $mine = $l->marks->firstWhere('admin_id', $me->id); $present = $l->attendance === 'present'; @endphp
                         <tr class="{{ $present ? '' : 'text-muted' }}">
                             <td>{{ $l->letter_no }}</td>
-                            <td>{{ $l->application->user->name }}</td>
+                            <td>{{ $l->application->user->name }}<br><a class="small" href="{{ route('admin.applications.show', $l->application) }}" target="_blank" rel="noopener"><i class="fas fa-user me-1"></i>View profile</a></td>
                             <td>{{ $l->application->application_no }}</td>
                             <td>{{ $l->attendance ? ucfirst($l->attendance) : 'Not marked' }}</td>
                             <td><input type="number" class="form-control form-control-sm" name="marks[{{ $l->id }}]" value="{{ old('marks.'.$l->id, $mine?->marks) }}" min="0" max="{{ $max }}" step="0.5" aria-label="Marks for {{ $l->letter_no }}" @disabled(! $present || $locked)></td>

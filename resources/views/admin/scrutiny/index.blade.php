@@ -2,7 +2,7 @@
 @section('title', ($type === 'academic' ? 'Academic' : 'Religious').' Scrutiny')
 @section('content')
 @php
-    $badge = ['pending' => 'warning', 'query' => 'info', 'approved' => 'success', 'rejected' => 'danger'];
+    $badge = ['pending' => 'warning', 'query' => 'info', 'review' => 'primary', 'approved' => 'success', 'rejected' => 'danger'];
     $total = $counts->sum();
 @endphp
 <div class="d-flex flex-wrap gap-2 mb-3">

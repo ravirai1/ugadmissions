@@ -14,6 +14,7 @@ use App\Models\State;
 use App\Models\Subject;
 use App\Support\ApplicationAccess;
 use App\Support\Excel;
+use App\Support\Roles;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +37,15 @@ class ApplicationController extends Controller
 
     public function show(Request $request, Application $application)
     {
-        abort_unless(ApplicationAccess::canView($request->user('admin'), $application), 404);
+        $admin = $request->user('admin');
+        abort_unless(ApplicationAccess::canView($admin, $application), 404);
+        // the religious team works only from the religious scrutiny page (basic and religious details)
+        if ($admin->role === Roles::RELIGIOUS) {
+            $rel = $application->scrutinies()->where('type', 'religious')->first();
+            abort_unless($rel, 404);
+
+            return redirect()->route('admin.scrutiny.show', $rel);
+        }
         $application->load(['user', 'class12Marks.class12Subject', 'cuetScores.subject', 'courses.course.department', 'curState', 'curDistrict', 'permState', 'permDistrict', 'domicileState', 'pwbdType', 'payments']);
         AuditLog::record('application.view', $application);
 
@@ -54,6 +63,7 @@ class ApplicationController extends Controller
     public function document(Request $request, ApplicationDocument $document)
     {
         abort_unless(ApplicationAccess::canView($request->user('admin'), $document->application), 404);
+        abort_if($request->user('admin')->role === Roles::RELIGIOUS && ! in_array($document->type, ScrutinyController::RELIGIOUS_DOCS, true), 404);
         if ($request->boolean('print')) {
             PrintLog::record('document', $document->application, ['type' => $document->type]);
         }
@@ -63,6 +73,7 @@ class ApplicationController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'Content-Disposition' => 'inline; filename="'.$document->application->application_no.'-'.$document->type.'.'.pathinfo($document->path, PATHINFO_EXTENSION).'"',
             'Cache-Control' => 'private, no-store',
+            'X-Frame-Options' => 'SAMEORIGIN', // shown beside the data on the scrutiny page
         ]);
     }
 

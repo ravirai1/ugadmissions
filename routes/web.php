@@ -148,14 +148,15 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
             });
 
         // Scrutiny: academic (department faculty, by department) and religious
-        Route::middleware('role:'.Roles::ADMIN.','.Roles::DEPARTMENT.','.Roles::RELIGIOUS)->prefix('scrutiny')->name('scrutiny.')
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::DEPARTMENT.','.Roles::RELIGIOUS.','.Roles::TFA)->prefix('scrutiny')->name('scrutiny.')
             ->controller(Admin\ScrutinyController::class)->group(function () {
+                Route::get('/overview', 'overview')->middleware('role:'.Roles::ADMIN.','.Roles::TFA)->name('overview');
                 Route::get('/{type}', 'index')->name('index')->whereIn('type', ['academic', 'religious']);
                 Route::get('/item/{scrutiny}', 'show')->name('show')->whereNumber('scrutiny');
                 Route::post('/item/{scrutiny}/decide', 'decide')->name('decide')->whereNumber('scrutiny');
                 Route::post('/item/{scrutiny}/query', 'query')->name('query')->whereNumber('scrutiny');
                 Route::post('/queries/{query}/close', 'closeQuery')->name('query.close')->whereNumber('query');
-                Route::post('/item/{scrutiny}/reopen', 'reopen')->middleware('role:'.Roles::ADMIN)->name('reopen')->whereNumber('scrutiny');
+                Route::post('/item/{scrutiny}/reopen', 'reopen')->middleware('role:'.Roles::ADMIN.','.Roles::TFA)->name('reopen')->whereNumber('scrutiny');
             });
 
         // Master data and fees (admin)
@@ -238,6 +239,7 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
         Route::middleware('role:'.Roles::ADMIN)->group(function () {
             Route::prefix('interviews')->name('interviews.')->controller(Admin\InterviewController::class)->group(function () {
                 Route::get('/', 'index')->name('index');
+                Route::get('/summary', 'summary')->name('summary');
                 Route::get('/course/{course}', 'course')->name('course')->whereNumber('course');
                 Route::post('/course/{course}/issue', 'issue')->name('issue')->whereNumber('course');
                 Route::post('/course/{course}/lock', 'lock')->name('lock')->whereNumber('course');
@@ -261,6 +263,7 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
         Route::middleware('role:'.Roles::ADMIN.','.Roles::ATTENDANCE)->prefix('attendance')->name('attendance.')->controller(Admin\AttendanceController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/scan/{token}', 'scan')->name('scan')->where('token', '[a-f0-9]{40}');
+            Route::get('/{letter}/{type}', 'image')->name('image')->whereNumber('letter')->whereIn('type', ['photo', 'signature']);
             Route::post('/{letter}', 'mark')->name('mark')->whereNumber('letter');
         });
         Route::middleware('role:'.Roles::ADMIN.','.Roles::INTERVIEW_PANEL)->prefix('panel')->name('panel.')->controller(Admin\PanelController::class)->group(function () {

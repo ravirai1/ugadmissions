@@ -121,9 +121,10 @@ class InterviewMeritTest extends TestCase
         // attendance desk
         $desk = $this->staff(Roles::ATTENDANCE);
         $this->as($this->staff(Roles::PRINT))->get($this->base."/attendance/scan/{$letter->qr_token}")->assertForbidden();
-        $this->as($desk)->get($this->base."/attendance/scan/{$letter->qr_token}")->assertOk()->assertSee('Asha')->assertSee('not today');
+        $this->as($desk)->get($this->base."/attendance/scan/{$letter->qr_token}")->assertOk()->assertSee('Asha')->assertSee('not today')->assertSee('Date of birth');
         $this->as($desk)->post($this->base."/attendance/{$letter->id}", ['attendance' => 'present'])->assertSessionHasNoErrors();
         $this->assertSame('present', $letter->refresh()->attendance);
+        $this->as($this->staff(Roles::ADMIN))->get($this->base.'/interviews/summary')->assertOk()->assertSee('Attendance')->assertSee($this->phy->name);
         $this->assertSame($desk->id, $letter->attendance_by);
         $raviLetter = CallLetter::where('application_id', $ravi->id)->first();
         $this->as($desk)->post($this->base."/attendance/{$raviLetter->id}", ['attendance' => 'absent']);
@@ -132,7 +133,8 @@ class InterviewMeritTest extends TestCase
         $p1 = $this->staff(Roles::INTERVIEW_PANEL, $this->phy->department_id);
         $p2 = $this->staff(Roles::INTERVIEW_PANEL, $this->phy->department_id);
         $ecoPanel = $this->staff(Roles::INTERVIEW_PANEL, $this->eco->department_id);
-        $this->as($p1)->get($this->base.'/panel?course='.$this->phy->id)->assertOk()->assertSee($letter->letter_no);
+        $this->as($p1)->get($this->base.'/panel?course='.$this->phy->id)->assertOk()->assertSee($letter->letter_no)->assertSee('View profile');
+        $this->as($p1)->get($this->base.'/applications/'.$letter->application_id)->assertOk();
         $this->as($ecoPanel)->post($this->base."/panel/{$this->phy->id}", ['marks' => [$letter->id => 10]])->assertForbidden();
         $this->as($p1)->post($this->base."/panel/{$this->phy->id}", ['marks' => [$letter->id => 16]])->assertSessionHasErrors('marks.'.$letter->id);
         $this->as($p1)->post($this->base."/panel/{$this->phy->id}", ['marks' => [$raviLetter->id => 10]])->assertSessionHasErrors('marks');
