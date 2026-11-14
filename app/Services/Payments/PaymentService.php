@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Notifications\PaymentReceived;
 use App\Services\FeeCalculator;
 use App\Services\ScrutinyService;
+use App\Services\SecurityAlerts;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -99,10 +100,12 @@ class PaymentService
             $status = Payment::FAILED;
             $note = 'Amount mismatch: expected '.$payment->amount.', gateway reported '.$result->amount.'. '.$note;
             Log::warning('Payment amount mismatch', ['order' => $payment->order_no, 'expected' => $payment->amount, 'got' => $result->amount]);
+            $this->alert($payment, 'Payment amount mismatch', ['Expected' => '₹'.$payment->amount, 'SBI reported' => '₹'.$result->amount]);
         }
         if ($status === Payment::SUCCESS && $result->merchantId && config('payment.sbi_epay.merchant_id') && $result->merchantId !== config('payment.sbi_epay.merchant_id')) {
             $status = Payment::FAILED;
             $note = 'Merchant id mismatch. '.$note;
+            $this->alert($payment, 'Payment merchant id mismatch', ['SBI reported merchant' => (string) $result->merchantId]);
         }
 
         // Double verification: a success from the browser or push must be confirmed by the status API.
@@ -164,6 +167,7 @@ class PaymentService
             case Payment::APPLICATION:
                 if ($app->isPaid()) {
                     $payment->forceFill(['is_duplicate' => true])->save();
+                    $this->alert($payment, 'Duplicate payment received (refund review needed)', []);
                     break;
                 }
                 $app->forceFill(['fee_paid_at' => now()])->save();
@@ -183,12 +187,14 @@ class PaymentService
                 }
                 if ($added === 0) {
                     $payment->forceFill(['is_duplicate' => true])->save();
+                    $this->alert($payment, 'Duplicate payment received (refund review needed)', []);
                 }
                 break;
 
             case Payment::ADD_RESIDENCE:
                 if ($app->residence) {
                     $payment->forceFill(['is_duplicate' => true])->save();
+                    $this->alert($payment, 'Duplicate payment received (refund review needed)', []);
                     break;
                 }
                 $app->forceFill(['residence' => true, 'residence_added_after_payment' => true])->save();
@@ -255,5 +261,14 @@ class PaymentService
             'admin_id' => $admin?->id,
             'ip' => $ip,
         ]);
+    }
+
+    private function alert(Payment $payment, string $title, array $details): void
+    {
+        app(SecurityAlerts::class)->send('payment:'.$payment->id.':'.$title, $title, [
+            'Order no.' => $payment->order_no,
+            'Application' => (string) $payment->application?->application_no,
+            'Purpose' => $payment->purposeLabel(),
+        ] + $details, route('admin.payments.index', ['q' => $payment->order_no]));
     }
 }

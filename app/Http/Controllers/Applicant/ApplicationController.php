@@ -16,6 +16,7 @@ use App\Notifications\ApplicationSubmitted;
 use App\Services\CourseSelection;
 use App\Services\DocumentStore;
 use App\Services\Eligibility;
+use App\Support\AdmissionWindow;
 use App\Support\ApplicationSteps;
 use App\Support\DocumentTypes;
 use App\Support\PersonalDetails;
@@ -85,6 +86,9 @@ class ApplicationController extends Controller
         if ($app->isSubmitted() && $step !== 'preview') {
             return redirect()->route('application.step', 'preview');
         }
+        if (! $app->isSubmitted() && ! AdmissionWindow::isOpen()) {
+            return $this->closed();
+        }
         if (! $this->canOpen($app, $step)) {
             return redirect()->route('application.step', $this->resumeStep($app))
                 ->with('status', 'Please complete this step first.');
@@ -94,6 +98,11 @@ class ApplicationController extends Controller
             ['app' => $app, 'step' => $step, 'user' => $request->user()],
             $this->viewData($app, $step)
         ));
+    }
+
+    private function closed()
+    {
+        return redirect()->route('applicant.dashboard')->withErrors(['window' => AdmissionWindow::status().' You cannot fill or change the application now.']);
     }
 
     private function viewData(Application $app, string $step): array
@@ -135,10 +144,12 @@ class ApplicationController extends Controller
     {
         $scores = $app->cuetScores()->pluck('score', 'subject_id')->map(fn ($v) => (float) $v)->all();
         $class12Ids = $this->eligibility->class12SubjectIds($app);
-        $courses = Course::where('is_active', true)->orderBy('sort')->get();
+        $allowed = AdmissionWindow::allowedCourseIds(); // reopened round: vacant courses only
+        $courses = Course::where('is_active', true)->when($allowed !== null, fn ($q) => $q->whereIn('id', $allowed))->orderBy('sort')->get();
 
         return [
             'courses' => $courses,
+            'reopened' => $allowed !== null,
             'evals' => $courses->mapWithKeys(fn ($c) => [$c->id => $this->eligibility->evaluate($c, $app, $scores, $class12Ids)]),
             'scores' => $scores,
             'chosen' => $app->courses()->get()->keyBy('course_id'),
@@ -181,6 +192,9 @@ class ApplicationController extends Controller
     {
         $app = $this->app($request);
         abort_if($app->isSubmitted(), 403, 'Your application has already been submitted.');
+        if (! AdmissionWindow::isOpen()) {
+            return $this->closed();
+        }
         if (! $this->canOpen($app, $step)) {
             return redirect()->route('application.step', $this->resumeStep($app));
         }
@@ -316,6 +330,7 @@ class ApplicationController extends Controller
             'christian_subcategory' => [Rule::requiredIf($christian), 'nullable', Rule::exists('categories', 'code')->where('parent_code', Category::CHRISTIAN)],
             'is_cst' => ['boolean'],
             'baptised' => ['nullable', Rule::in(['yes', 'no'])], // missing means yes
+            'du_minority_confirm' => ['accepted_if:category_code,'.Category::CHRISTIAN],
             'baptism_date' => [Rule::requiredIf($self), 'nullable', 'date', 'before_or_equal:'.$latestBaptism],
             'baptism_church' => [Rule::requiredIf($self), 'nullable', 'string', 'max:200'],
             'baptism_place' => [Rule::requiredIf($self), 'nullable', 'string', 'max:100'],
@@ -342,6 +357,7 @@ class ApplicationController extends Controller
             'needs_scribe' => ['boolean'],
         ], [
             'pwbd_percentage.min' => 'PwBD category requires a benchmark disability of at least 40%.',
+            'du_minority_confirm.accepted_if' => 'Confirm that you have selected the Christian minority category on the DU CSAS (UG) portal.',
             '*baptism_date.before_or_equal' => "Baptism must be at least {$years} years before the date of application (on or before ".now()->subYears($years)->format('d M Y').').',
             'current_priest_mobile.required' => "Enter the parish priest's mobile number.",
             'current_priest_mobile.regex' => 'Enter a valid 10-digit mobile number.',
@@ -465,11 +481,16 @@ class ApplicationController extends Controller
         $data = $request->validate([
             'csas_application_no' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9-]+$/'],
             'residence' => ['boolean'],
-        ] + CourseSelection::rules());
+            'du_csas_confirm' => ['accepted'],
+        ] + CourseSelection::rules(), ['du_csas_confirm.accepted' => 'Confirm that you have chosen the same courses and preferences on the DU CSAS (UG) portal.']);
+        unset($data['du_csas_confirm']);
 
         $selected = collect($data['courses'])->filter(fn ($c) => ! empty($c['selected']));
         if ($selected->isEmpty()) {
             throw ValidationException::withMessages(['courses' => 'Select at least one course.']);
+        }
+        if ($selected->keys()->contains(fn ($id) => ! AdmissionWindow::allows((int) $id))) {
+            throw ValidationException::withMessages(['courses' => 'Applications are open only for the courses listed now.']);
         }
 
         [$scores, $class12Ids] = $this->selection->context($app);
@@ -536,6 +557,9 @@ class ApplicationController extends Controller
     {
         $app = $this->app($request);
         abort_if($app->isSubmitted(), 403, 'Your application has already been submitted.');
+        if (! AdmissionWindow::isOpen()) {
+            return $this->closed();
+        }
         abort_unless(in_array($type, $app->requiredDocumentTypes(), true), 404);
         abort_unless($this->canOpen($app, 'documents'), 403);
 
@@ -561,6 +585,12 @@ class ApplicationController extends Controller
     {
         $app = $this->app($request);
         abort_if($app->isSubmitted(), 403, 'Your application has already been submitted.');
+        if (! AdmissionWindow::isOpen()) {
+            return $this->closed();
+        }
+        if ($app->courses()->get()->contains(fn ($c) => ! AdmissionWindow::allows($c->course_id))) {
+            return redirect()->route('application.step', 'courses')->withErrors(['courses' => 'Some of your courses are not open now. Choose only the courses listed, then submit.']);
+        }
 
         $request->validate(['declaration' => ['accepted']], ['declaration.accepted' => 'Please accept the declaration to submit.']);
 

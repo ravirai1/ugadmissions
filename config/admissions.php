@@ -9,6 +9,7 @@ return [
 
     // Non-obvious URL prefix for the staff login and panel.
     'admin_path' => env('ADMIN_PATH', 'ssc-staff'),
+    'activity_log_days' => (int) env('ACTIVITY_LOG_DAYS', 400),
 
     // Failed-login IP blocking.
     'lockout' => [
@@ -36,6 +37,9 @@ return [
 
     // Application numbers: prefix + 5-digit serial, e.g. UGADM2700001.
     'application_no_prefix' => 'UGADM27',
+
+    // University of Delhi CSAS (UG) portal: applicants must apply there too, with the same courses and preferences.
+    'du_csas_url' => env('DU_CSAS_URL', 'https://admission.uod.ac.in'),
 
     // Christian category: baptism (own or parent's) must be at least this many years before the application.
     'baptism_min_years' => (int) env('BAPTISM_MIN_YEARS', 2),

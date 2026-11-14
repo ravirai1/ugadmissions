@@ -5,6 +5,15 @@
 @endphp
 <form method="POST" action="{{ route('application.save', $step) }}" data-app-form novalidate>
     @csrf
+    @if ($reopened)
+        <div class="alert alert-info"><strong>{{ \App\Support\AdmissionWindow::status() }}</strong> Only the courses with vacant seats are listed below.</div>
+    @endif
+    <div class="du-alert mb-4" role="alert">
+        <h5 class="mb-2"><i class="fa fa-exclamation-triangle me-2"></i>You must apply on the DU CSAS (UG) portal as well</h5>
+        <p class="mb-2"><strong>Choose the SAME courses at St. Stephen's College on the DU CSAS (UG) portal, and enter here the SAME preference number you gave each one there.</strong></p>
+        <p class="mb-2">If a course is not chosen at St. Stephen's College on the DU portal, or the preference number does not match, <strong>you will not be eligible for that course</strong>, even if you apply here.</p>
+        <a href="{{ config('admissions.du_csas_url') }}" target="_blank" rel="noopener" class="btn btn-sm btn-dark"><i class="fa fa-external-link-alt me-1"></i>Open the DU CSAS (UG) portal</a>
+    </div>
     <div class="form-section">
         <h5>DU CSAS (UG) details</h5>
         <div class="row g-3">
@@ -31,6 +40,13 @@
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="residence" name="residence" value="1" @checked(old('residence', $app->residence))>
             <label class="form-check-label" for="residence">I wish to apply for College residence (additional ₹{{ number_format(\App\Services\FeeCalculator::fees()['residence']) }})</label>
+        </div>
+    </div>
+    <div class="du-alert du-alert-sm mb-3">
+        <div class="form-check mb-0">
+            <input class="form-check-input @error('du_csas_confirm') is-invalid @enderror" type="checkbox" name="du_csas_confirm" id="du_csas_confirm" value="1" @checked(old('du_csas_confirm', $app->csas_application_no))>
+            <label class="form-check-label fw-bold" for="du_csas_confirm">I have chosen the same courses at St. Stephen's College on the DU CSAS (UG) portal, and the preference numbers above are the same as there. <span class="req">*</span></label>
+            @error('du_csas_confirm')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
     </div>
     @include('application._buttons')

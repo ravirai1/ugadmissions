@@ -212,6 +212,22 @@ class ApplicationFormTest extends TestCase
         $this->actingAs($this->user)->get('/application/basic')->assertRedirect('/application/preview');
     }
 
+    public function test_du_csas_warnings_and_confirmations(): void
+    {
+        $this->go('basic', $this->basic());
+        $this->go('address', $this->address());
+        $this->actingAs($this->user)->get('/application/category')->assertSee('Christian minority')->assertSee(config('admissions.du_csas_url'));
+        $this->go('category', $this->christian(['du_minority_confirm' => null]))->assertSessionHasErrors('du_minority_confirm');
+        $this->go('category', ['category_code' => 'UR', 'du_minority_confirm' => null])->assertSessionHasNoErrors(); // only Christian applicants
+        $this->go('category', $this->christian())->assertSessionHasNoErrors();
+        $this->go('academics', $this->academics());
+        $this->go('cuet', $this->cuet());
+        $this->actingAs($this->user)->get('/application/courses')->assertSee('SAME preference number')->assertSee(config('admissions.du_csas_url'));
+        $this->go('courses', ['csas_application_no' => 'DU27X1', 'du_csas_confirm' => null, 'courses' => [
+            Course::where('code', 'BSC-PHY')->value('id') => ['selected' => 1, 'du_preference' => 1, 'language' => $this->sub('ENG'), 'combination' => 'PCM (Physics, Chemistry, Mathematics)'],
+        ]])->assertSessionHasErrors('du_csas_confirm');
+    }
+
     public function test_photo_and_signature_rules(): void
     {
         $this->fillToCourses();

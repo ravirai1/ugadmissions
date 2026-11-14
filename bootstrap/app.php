@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Middleware\AdminSession;
+use App\Http\Middleware\DetectAttacks;
 use App\Http\Middleware\EnsureIpNotBlocked;
+use App\Http\Middleware\LogActivity;
 use App\Http\Middleware\RequireRole;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -16,7 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [SecurityHeaders::class]);
+        $middleware->prepend(DetectAttacks::class); // before routing, so probes of unknown paths are caught too
+        $middleware->web(append: [SecurityHeaders::class, LogActivity::class]);
 
         $middleware->alias([
             'ip.allowed' => EnsureIpNotBlocked::class,

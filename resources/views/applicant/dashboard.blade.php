@@ -22,6 +22,18 @@
         @endforeach
     </div>
 
+    @error('window')<div class="alert alert-danger">{{ $message }}</div>@enderror
+    @php $win = \App\Support\AdmissionWindow::class; @endphp
+    @if ($win::reopenActive())
+        <div class="du-alert mb-4">
+            <strong>{{ $win::status() }}</strong>
+            Courses open now: {{ \App\Models\Course::whereIn('id', $win::allowedCourseIds())->orderBy('sort')->pluck('name')->implode(', ') }}.
+            @if ($app?->isPaid()) You can add one of these courses if you have not applied for it, from <a href="{{ route('payment.add-courses') }}">Add courses</a>.@endif
+        </div>
+    @elseif (! $win::isOpen() && ! $app?->isSubmitted())
+        <div class="alert alert-secondary">{{ $win::status() }}</div>
+    @endif
+
     @foreach ($openQueries as $q)
         <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
             <div><strong>Action needed:</strong> the scrutiny team has a query about your application ({{ $q->created_at->timezone('Asia/Kolkata')->format('d M') }}).</div>
@@ -34,6 +46,20 @@
             <div class="alert alert-success d-flex flex-wrap align-items-center gap-2">
                 <div><strong>Seat offered:</strong> {{ $o->course->name }} (total {{ $o->total }}/100). Accept by <strong>{{ $o->deadline_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') }} IST</strong> or the seat lapses.</div>
                 <a href="{{ route('applicant.offer', $o) }}" class="btn btn-sm btn-success ms-auto">View offer letter and respond</a>
+            </div>
+        @endif
+    @endforeach
+
+    @foreach ($callLetters as $l)
+        @php
+            $lPref = $app->courses->firstWhere('id', $l->application_course_id)?->du_preference;
+            $heldPrefTop = $activeOffer ? $app->courses->firstWhere('id', $activeOffer->application_course_id)?->du_preference : null;
+        @endphp
+        {{-- only while the interview is ahead, no result yet, and no seat already held in a course placed higher --}}
+        @if ($l->interview_date->endOfDay()->isFuture() && ! $l->attendance && ! $offers->firstWhere('application_course_id', $l->application_course_id) && ! ($heldPrefTop !== null && $lPref > $heldPrefTop))
+            <div class="alert alert-info d-flex flex-wrap align-items-center gap-2">
+                <div><strong>Called for interview:</strong> {{ $l->course->name }} on <strong>{{ $l->interview_date->format('d M Y') }}</strong>, report by {{ $l->reporting_time }}{{ $l->venue ? ' at '.$l->venue : '' }}. Bring a printed call letter and your photo ID.</div>
+                <a href="{{ route('applicant.call-letter', $l) }}" class="btn btn-sm btn-primary ms-auto"><i class="fa fa-download me-1"></i>Download call letter</a>
             </div>
         @endif
     @endforeach
@@ -134,9 +160,48 @@
         </div>
     </div>
 
+    @if ($queries->isNotEmpty())
+        <div class="p-4 border mt-4" id="queries">
+            <h5 class="mb-1">Queries from the scrutiny team</h5>
+            <p class="small text-muted">The same query is emailed to you with a secure link. You can reply and upload documents either from that link or from here.</p>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle small mb-0">
+                    <thead class="table-light"><tr><th>Raised</th><th>About</th><th>Query</th><th>Your reply</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach ($queries as $q)
+                            <tr>
+                                <td class="text-nowrap">{{ $q->created_at->timezone('Asia/Kolkata')->format('d M Y') }}</td>
+                                <td>{{ $q->scrutiny?->type === 'religious' ? 'Christian category' : ($q->scrutiny?->applicationCourse?->course->name ?? 'Application') }}</td>
+                                <td style="white-space: pre-line">{{ \Illuminate\Support\Str::limit($q->message, 200) }}@if ($q->document_types)<br><span class="text-muted">Documents asked: {{ collect($q->document_types)->map(fn ($t) => \App\Support\DocumentTypes::label($t))->implode(', ') }}</span>@endif</td>
+                                <td>
+                                    @if ($q->replied_at)
+                                        <span class="text-muted">{{ $q->replied_at->timezone('Asia/Kolkata')->format('d M Y, h:i A') }}</span>
+                                        @if ($q->reply)<div style="white-space: pre-line">{{ \Illuminate\Support\Str::limit($q->reply, 200) }}</div>@endif
+                                        @if ($q->attachments->isNotEmpty())<div><i class="fa fa-paperclip me-1"></i>{{ $q->attachments->count() }} {{ \Illuminate\Support\Str::plural('document', $q->attachments->count()) }} uploaded</div>@endif
+                                    @else
+                                        <span class="text-muted">Not replied yet</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @php([$qc, $ql] = match ($q->status) { 'open' => ['bg-warning text-dark', 'Reply needed'], 'answered' => ['bg-info text-dark', 'Replied, under review'], default => ['bg-success', 'Closed'] })
+                                    <span class="badge {{ $qc }}">{{ $ql }}</span>
+                                </td>
+                                <td class="text-nowrap"><a href="{{ route('applicant.query', $q) }}" class="btn btn-sm {{ $q->isOpen() ? 'btn-primary' : 'btn-outline-secondary' }}">{{ $q->isOpen() ? 'Reply and upload' : 'View' }}</a></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     @if ($app?->isSubmitted())
-        <div class="p-4 border mt-4">
-            <h5 class="mb-3">Payments &amp; Receipts</h5>
+        <div class="p-4 border mt-4" id="payments">
+            <h5 class="mb-1">Track payments &amp; receipts</h5>
+            @php($tries = $payments->count())
+            @if ($tries)
+                <p class="small text-muted">{{ $tries }} payment {{ \Illuminate\Support\Str::plural('attempt', $tries) }}, {{ $payments->filter->isSuccess()->count() }} successful. Open <em>SBI updates</em> on any row to see each message from SBI ePay (return to this site, SBI server push, status checks).</p>
+            @endif
             @include('payment._history', ['payments' => $payments])
         </div>
     @endif

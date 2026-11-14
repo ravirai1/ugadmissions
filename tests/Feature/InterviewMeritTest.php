@@ -114,7 +114,8 @@ class InterviewMeritTest extends TestCase
         $this->assertMatchesRegularExpression('/^SSC27CL\d{6}$/', $letter->letter_no);
 
         // applicant sees the letter with a QR code; nobody else can
-        $this->actingAs($asha->user)->get('/applicant/dashboard')->assertSee('Call letter');
+        $this->actingAs($asha->user)->get('/applicant/dashboard')->assertSee('Called for interview')->assertSee('Download call letter')->assertSee(route('applicant.call-letter', $letter), false);
+        $this->actingAs($pending->user)->get('/applicant/dashboard')->assertDontSee('Called for interview'); // not eligible, no letter
         $this->actingAs($asha->user)->get("/applicant/call-letter/{$letter->id}")->assertOk()->assertSee($letter->letter_no)->assertSee('data:image/svg+xml;base64', false);
         $this->actingAs($ravi->user)->get("/applicant/call-letter/{$letter->id}")->assertNotFound();
 

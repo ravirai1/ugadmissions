@@ -68,6 +68,7 @@
                     @endif
                     @if ($me->hasRole($R::ADMIN))
                         {!! $item('admin.seats.index', 'fa-th', 'Seat Matrix', 'admin.seats.*') !!}
+                        {!! $item('admin.window.edit', 'fa-door-open', 'Admission Window', 'admin.window.*') !!}
                         {!! $item('admin.merit.index', 'fa-list-ol', 'Merit Lists', 'admin.merit.*') !!}
                         {!! $item('admin.allotment.index', 'fa-th-large', 'Seat Allotment', 'admin.allotment.index') !!}
                         {!! $item('admin.allotment.selections', 'fa-user-graduate', 'Selected List', 'admin.allotment.selections') !!}
@@ -107,6 +108,15 @@
                         </li>
                         <li class="nav-item {{ request()->routeIs('admin.security.audit') ? 'active' : '' }}">
                             <a href="{{ route('admin.security.audit') }}"><i class="fas fa-history"></i><p>Audit Log</p></a>
+                        </li>
+                        <li class="nav-item {{ request()->routeIs('admin.security.applicant-activity') ? 'active' : '' }}">
+                            <a href="{{ route('admin.security.applicant-activity') }}"><i class="fas fa-user-clock"></i><p>Applicant Activity</p></a>
+                        </li>
+                        <li class="nav-item {{ request()->routeIs('admin.security.staff-activity') ? 'active' : '' }}">
+                            <a href="{{ route('admin.security.staff-activity') }}"><i class="fas fa-user-shield"></i><p>Staff Activity</p></a>
+                        </li>
+                        <li class="nav-item {{ request()->routeIs('admin.security.threats') ? 'active' : '' }}">
+                            <a href="{{ route('admin.security.threats') }}"><i class="fas fa-shield-alt"></i><p>Attack Attempts</p></a>
                         </li>
                     @endif
                     <li class="nav-section"><span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span><h4 class="text-section">Account</h4></li>

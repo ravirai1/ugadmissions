@@ -245,6 +245,8 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
                 Route::post('/course/{course}/lock', 'lock')->name('lock')->whereNumber('course');
                 Route::delete('/letters/{letter}', 'cancel')->name('cancel')->whereNumber('letter');
             });
+            Route::get('/admission-window', [Admin\AdmissionWindowController::class, 'edit'])->name('window.edit');
+            Route::put('/admission-window', [Admin\AdmissionWindowController::class, 'update'])->name('window.update');
             Route::get('/seats', [Admin\SeatController::class, 'index'])->name('seats.index');
             Route::put('/seats', [Admin\SeatController::class, 'update'])->name('seats.update');
             Route::prefix('merit')->name('merit.')->controller(Admin\MeritController::class)->group(function () {
@@ -277,6 +279,9 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
             Route::post('/blocked-ips', [Admin\SecurityController::class, 'block'])->name('block');
             Route::delete('/blocked-ips/{blockedIp}', [Admin\SecurityController::class, 'unblock'])->name('unblock');
             Route::get('/audit-log', [Admin\SecurityController::class, 'audit'])->name('audit');
+            Route::get('/applicant-activity', [Admin\SecurityController::class, 'applicantActivity'])->name('applicant-activity');
+            Route::get('/staff-activity', [Admin\SecurityController::class, 'staffActivity'])->name('staff-activity');
+            Route::get('/threats', [Admin\SecurityController::class, 'threats'])->name('threats');
         });
     });
 });

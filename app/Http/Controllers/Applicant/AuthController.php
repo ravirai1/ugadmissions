@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Rules\StrongPassword;
 use App\Rules\ValidCaptcha;
+use App\Services\ActivityLogger;
 use App\Services\LoginGuard;
 use App\Services\MathCaptcha;
 use Illuminate\Auth\Events\Registered;
@@ -94,6 +95,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        app(ActivityLogger::class)->applicant('logout', $request->user('web'), null, $request);
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

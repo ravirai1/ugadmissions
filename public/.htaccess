@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Security: never run or serve any PHP/script file except index.php (stops an uploaded or planted
+    # shell from executing), and never serve hidden files such as .env or .git.
+    RewriteCond %{REQUEST_URI} !^/index\.php$
+    RewriteRule \.(php\d?|phtml|phar|pht|cgi|pl|py|sh|asp|aspx|jsp)$ - [F,L,NC]
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -22,4 +28,11 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# No directory listings anywhere.
+Options -Indexes
+
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
 </IfModule>
