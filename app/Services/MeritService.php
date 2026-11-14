@@ -76,9 +76,9 @@ class MeritService
             'total' => round($cuet + $interview, 2),
             'category' => $app->meritCategory() ?? 'UR',
             'pwbd' => (bool) $app->is_pwbd,
-            'cst' => $app->isChristian() && $app->is_cst && $app->meritCategory() !== 'UR', // not if religious scrutiny rejected
+            'cst' => $app->meritCst(), // as verified by religious scrutiny; never if rejected
 
-            'class12' => $app->class12Percentage() ?? 0.0,
+            'class12' => (float) ($scrutiny?->verified_class12_percent ?? $app->class12Percentage() ?? 0.0), // verified by the department
             'dob' => $app->dob?->format('Y-m-d') ?? '9999-12-31',
         ];
     }

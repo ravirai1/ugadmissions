@@ -17,11 +17,12 @@
     <p class="small mb-2">Candidates: <strong>{{ $summary['total'] }}</strong> · Present: <strong class="text-success">{{ $summary['present'] }}</strong> · Absent: <strong class="text-danger">{{ $summary['absent'] }}</strong> · Not marked: <strong>{{ $summary['total'] - $summary['present'] - $summary['absent'] }}</strong></p>
     <div class="table-responsive">
         <table class="table table-sm table-compact align-middle">
-            <thead><tr><th>Letter</th><th>Name</th><th>Application</th><th>Course</th><th>Date</th><th>Marked</th><th class="text-end">Attendance</th></tr></thead>
+            <thead><tr><th></th><th>Letter</th><th>Name</th><th>Application</th><th>Course</th><th>Date</th><th>Marked</th><th class="text-end">Attendance</th></tr></thead>
             @forelse ($letters as $l)
                 <tr>
+                    <td>@if ($l->application->documents->firstWhere('type', 'photo'))<img src="{{ route('admin.attendance.image', [$l, 'photo']) }}" alt="" style="width:36px;height:44px;object-fit:cover" loading="lazy">@endif</td>
                     <td><a href="{{ route('admin.attendance.scan', $l->qr_token) }}">{{ $l->letter_no }}</a></td>
-                    <td>{{ $l->application->user->name }}</td>
+                    <td>{{ $l->application->user->name }}<br><a class="small" href="{{ route('admin.attendance.scan', $l->qr_token) }}">Details</a></td>
                     <td>{{ $l->application->application_no }}</td>
                     <td class="small">{{ $l->course->name }}</td>
                     <td class="small">{{ $l->interview_date->format('d M') }}, {{ $l->reporting_time }}</td>
@@ -29,7 +30,7 @@
                     <td class="text-end text-nowrap">@include('admin.attendance._buttons')</td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="text-muted">No candidates for this day.</td></tr>
+                <tr><td colspan="8" class="text-muted">No candidates for this day.</td></tr>
             @endforelse
         </table>
     </div>

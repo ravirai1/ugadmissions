@@ -89,14 +89,32 @@ class Application extends Model
         return ! $this->isChristian() || ($this->religiousScrutiny()?->isDecided() ?? false);
     }
 
-    /** Category used for merit lists: Christian applicants not accepted by religious scrutiny compete as General (UR). */
+    /**
+     * Category used for merit lists: Christian applicants rejected by the TFA admin compete as General (UR);
+     * otherwise the sub-category as verified by religious scrutiny (falling back to what was entered).
+     */
     public function meritCategory(): ?string
     {
-        if ($this->isChristian() && $this->religiousScrutiny()?->status === Scrutiny::REJECTED) {
+        if (! $this->isChristian()) {
+            return $this->category_code;
+        }
+        $rel = $this->religiousScrutiny();
+        if ($rel?->status === Scrutiny::REJECTED) {
             return 'UR';
         }
 
-        return $this->isChristian() ? $this->christian_subcategory : $this->category_code;
+        return ($rel?->status === Scrutiny::APPROVED ? $rel->verified_subcategory : null) ?? $this->christian_subcategory;
+    }
+
+    /** CST for merit: as verified by religious scrutiny; never for a rejected Christian claim. */
+    public function meritCst(): bool
+    {
+        if (! $this->isChristian() || $this->meritCategory() === 'UR') {
+            return false;
+        }
+        $rel = $this->religiousScrutiny();
+
+        return $rel?->status === Scrutiny::APPROVED && $rel->verified_cst !== null ? $rel->verified_cst : (bool) $this->is_cst;
     }
 
     /** Eligible for the interview of a course: paid, academic scrutiny approved for it, religious part settled. */

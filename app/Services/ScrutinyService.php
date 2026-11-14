@@ -45,7 +45,6 @@ class ScrutinyService
             'status' => $data['status'],
             'remarks' => $data['remarks'] ?? null,
             'checklist' => $data['checklist'] ?? [],
-            'verified_cuet_score' => $s->type === Scrutiny::ACADEMIC ? ($data['verified_cuet_score'] ?? null) : null,
             'reviewed_by' => $admin->id,
             'reviewed_at' => now(),
             'reply_received' => false,
@@ -56,10 +55,20 @@ class ScrutinyService
         return $s;
     }
 
-    /** Puts the record back in the queue (admin only). */
+    /** Scrutiny staff send the record to the TFA admin with a comment. */
+    public function markForReview(Scrutiny $s, string $comment, Admin $admin): Scrutiny
+    {
+        $before = $s->status;
+        $s->fill(['status' => Scrutiny::REVIEW, 'review_comment' => $comment, 'review_by' => $admin->id, 'review_at' => now(), 'reply_received' => false])->save();
+        AuditLog::record("scrutiny.{$s->type}.review", $s, ['from' => $before]);
+
+        return $s;
+    }
+
+    /** Puts the record back in the queue (admin / TFA admin). */
     public function reopen(Scrutiny $s): void
     {
-        $s->update(['status' => Scrutiny::PENDING, 'reviewed_at' => null]);
+        $s->update(['status' => Scrutiny::PENDING, 'reviewed_at' => null, 'verified_cuet_score' => null, 'verified_class12_percent' => null, 'verified_subcategory' => null, 'verified_cst' => null]);
         AuditLog::record("scrutiny.{$s->type}.reopen", $s);
     }
 

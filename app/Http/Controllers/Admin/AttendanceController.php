@@ -7,6 +7,7 @@ use App\Models\CallLetter;
 use App\Models\Course;
 use App\Services\InterviewService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /** Attendance desk (tech team): scan the call letter QR code or search, then mark present or absent. */
@@ -17,7 +18,7 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $date = $request->date('date') ?? now('Asia/Kolkata')->startOfDay();
-        $q = CallLetter::with('application.user', 'course')->orderBy('course_id')->orderBy('id');
+        $q = CallLetter::with('application.user', 'application.documents', 'course')->orderBy('course_id')->orderBy('id');
 
         if ($term = trim((string) $request->query('q'))) {
             $q->where(fn ($w) => $w->where('letter_no', $term)->orWhereHas('application', fn ($a) => $a->where('application_no', $term)));
@@ -40,9 +41,22 @@ class AttendanceController extends Controller
     /** Opened from the QR code on the call letter. */
     public function scan(string $token)
     {
-        $letter = CallLetter::where('qr_token', $token)->with('application.user', 'application.documents', 'course')->firstOrFail();
+        $letter = CallLetter::where('qr_token', $token)->with('application.user', 'application.documents', 'application.domicileState', 'course')->firstOrFail();
+        $docs = $letter->application->documents;
 
-        return view('admin.attendance.scan', ['letter' => $letter, 'photo' => $letter->application->documents->firstWhere('type', 'photo')]);
+        return view('admin.attendance.scan', ['letter' => $letter, 'photo' => $docs->firstWhere('type', 'photo'), 'signature' => $docs->firstWhere('type', 'signature')]);
+    }
+
+    /** Photo or signature of a candidate with a call letter, for checking identity at the desk. */
+    public function image(CallLetter $letter, string $type)
+    {
+        $doc = $letter->application->documents()->where('type', $type)->latest('id')->firstOrFail();
+
+        return Storage::disk('documents')->response($doc->path, null, [
+            'Content-Type' => $doc->mime,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     public function mark(Request $request, CallLetter $letter)

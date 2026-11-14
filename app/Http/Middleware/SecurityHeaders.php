@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -25,6 +25,9 @@ class SecurityHeaders
         $gw = parse_url((string) config('payment.sbi_epay.transaction_url'));
         $gwHost = isset($gw['scheme'], $gw['host']) ? $gw['scheme'].'://'.$gw['host'] : '';
 
+        // A response may opt in to being shown inside the portal's own pages (scrutiny document viewer).
+        $sameOrigin = $response->headers->get('X-Frame-Options') === 'SAMEORIGIN';
+
         $csp = implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'nonce-$nonce'",
@@ -32,14 +35,14 @@ class SecurityHeaders
             "font-src 'self' data: https://fonts.gstatic.com",
             "img-src 'self' data: blob:",
             "connect-src 'self'",
-            "frame-ancestors 'none'",
+            $sameOrigin ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
             "form-action 'self' ".$gwHost,
             "base-uri 'self'",
             "object-src 'none'",
         ]);
 
         $response->headers->set('Content-Security-Policy', trim($csp));
-        $response->headers->set('X-Frame-Options', 'DENY');
+        $response->headers->set('X-Frame-Options', $sameOrigin ? 'SAMEORIGIN' : 'DENY');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');

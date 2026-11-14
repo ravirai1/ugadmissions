@@ -8,13 +8,23 @@ namespace App\Support;
 final class Roles
 {
     public const SUPER_ADMIN = 'super_admin';
+
     public const ADMIN = 'admin';
+
     public const DEPARTMENT = 'department';          // department faculty: academic scrutiny for own courses
+
     public const RELIGIOUS = 'religious_scrutiny';   // chaplaincy: religious scrutiny
+
+    public const TFA = 'tfa_admin';                  // final scrutiny authority: only role that can reject
+
     public const ACCOUNTS = 'accounts';              // payments
+
     public const HELPDESK = 'helpdesk';              // chat admin
+
     public const PRINT = 'print';                    // print-only
-    public const INTERVIEW_PANEL = 'interview_panel';// view interview list, marks entry if permitted
+
+    public const INTERVIEW_PANEL = 'interview_panel'; // view interview list, marks entry if permitted
+
     public const ATTENDANCE = 'attendance';          // tech team: mark present / absent
 
     public static function labels(): array
@@ -24,10 +34,11 @@ final class Roles
             self::ADMIN => 'Admin',
             self::DEPARTMENT => 'Department Faculty',
             self::RELIGIOUS => 'Religious Scrutiny',
+            self::TFA => 'TFA Admin (final scrutiny decisions)',
             self::ACCOUNTS => 'Accounts',
             self::HELPDESK => 'Helpdesk / Chat Admin',
             self::PRINT => 'Print',
-            self::INTERVIEW_PANEL => 'Interview Panel',
+            self::INTERVIEW_PANEL => 'Department Nominee (Interview Panel)',
             self::ATTENDANCE => 'Attendance Desk (Tech Team)',
         ];
     }

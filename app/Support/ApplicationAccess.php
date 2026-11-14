@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\Builder;
  * Which applications a staff member may see.
  * - Department faculty and interview panels: paid applications with a paid course of their department.
  * - Religious scrutiny: paid applications in a Christian category.
- * - Central roles (admin, accounts, helpdesk, print): every submitted application.
+ * - Central roles (admin, accounts, helpdesk, print, TFA admin): every submitted application.
  */
 final class ApplicationAccess
 {
-    public const CENTRAL = [Roles::ADMIN, Roles::ACCOUNTS, Roles::HELPDESK, Roles::PRINT];
+    public const CENTRAL = [Roles::ADMIN, Roles::ACCOUNTS, Roles::HELPDESK, Roles::PRINT, Roles::TFA];
 
-    public const VIEW_ROLES = [Roles::ADMIN, Roles::ACCOUNTS, Roles::HELPDESK, Roles::PRINT, Roles::DEPARTMENT, Roles::RELIGIOUS, Roles::INTERVIEW_PANEL];
+    public const VIEW_ROLES = [Roles::ADMIN, Roles::TFA, Roles::ACCOUNTS, Roles::HELPDESK, Roles::PRINT, Roles::DEPARTMENT, Roles::RELIGIOUS, Roles::INTERVIEW_PANEL];
 
     public static function scope(Admin $admin, Builder $q): Builder
     {
