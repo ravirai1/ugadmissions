@@ -14,7 +14,19 @@
         <tr><th>Email / mobile</th><td>{{ $user->email }} / +91 {{ $user->mobile }}</td></tr>
         <tr><th>Date of birth</th><td>{{ $app->dob?->format('d M Y') }}</td></tr>
         <tr><th>Gender</th><td>{{ $app->gender }}</td></tr>
-        <tr><th>Father / mother</th><td>{{ $app->father_name }} / {{ $app->mother_name }}</td></tr>
+        <tr><th>Blood group</th><td>{{ $app->blood_group }}</td></tr>
+        <tr><th>Nationality</th><td>{{ $app->nationality }}</td></tr>
+        <tr><th>Mother tongue</th><td>{{ $app->mother_tongue === 'Other' ? $app->mother_tongue_other : $app->mother_tongue }}</td></tr>
+        @foreach (['father' => 'Father', 'mother' => 'Mother'] as $p => $label)
+            <tr><th>{{ $label }}</th><td>
+                <strong>{{ \App\Support\PersonalDetails::withTitle($app->{$p.'_title'}, $app->{$p.'_name'}) }}</strong>
+                @if ($app->{$p.'_qualification'})<br>Qualification: {{ $app->{$p.'_qualification'} }}@endif
+                @if ($app->{$p.'_occupation'})<br>Occupation: {{ $app->{$p.'_occupation'} }}@endif
+                @if ($app->{$p.'_designation'})<br>{{ $app->{$p.'_designation'} }}, {{ $app->{$p.'_organisation'} }}@endif
+                @if ($app->{$p.'_office_address'})<br>Office: {{ $app->{$p.'_office_address'} }}@endif
+                @if ($app->{$p.'_mobile'} || $app->{$p.'_email'})<br>{{ collect([$app->{$p.'_mobile'} ? '+91 '.$app->{$p.'_mobile'} : null, $app->{$p.'_email'}])->filter()->implode(' / ') }}@endif
+            </td></tr>
+        @endforeach
         <tr><th>Annual family income</th><td>{{ $incomes[$app->family_income] ?? '' }}</td></tr>
         <tr><th>Last school</th><td>{{ $app->last_school }}, {{ $app->last_school_city }}</td></tr>
     </table>

@@ -4,11 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\Category;
-use App\Models\Class12Subject;
 use App\Models\Course;
 use App\Models\PwbdType;
-use App\Models\State;
-use App\Models\Subject;
 use App\Models\User;
 use App\Notifications\ApplicationSubmitted;
 use Database\Seeders\MasterDataSeeder;
@@ -30,7 +27,7 @@ class ApplicationFormTest extends TestCase
         parent::setUp();
         $this->seed(MasterDataSeeder::class);
         $this->user = User::factory()->create();
-        Storage::fake('local');
+        Storage::fake('documents');
     }
 
     public function test_steps_must_be_done_in_order(): void
@@ -45,6 +42,27 @@ class ApplicationFormTest extends TestCase
         foreach (['basic', 'address', 'category', 'academics', 'cuet', 'courses'] as $s) {
             $this->actingAs($this->user)->get("/application/$s")->assertOk();
         }
+    }
+
+    public function test_basic_step_personal_and_parent_details(): void
+    {
+        $this->actingAs($this->user)->get('/application/basic')->assertOk()->assertSee('Blood group')->assertSee('Prof.')->assertSee('Office address');
+
+        // a working parent needs designation, employer and office address
+        $this->go('basic', $this->basic(['father_office_address' => '']))->assertSessionHasErrors('father_office_address');
+        // at least one parent's mobile
+        $this->go('basic', $this->basic(['father_mobile' => '']))->assertSessionHasErrors('father_mobile');
+        $this->go('basic', $this->basic(['blood_group' => 'Z+', 'father_title' => 'King']))->assertSessionHasErrors(['blood_group', 'father_title']);
+        $this->go('basic', $this->basic(['mother_tongue' => 'Other']))->assertSessionHasErrors('mother_tongue_other');
+
+        // "Late": no occupation needed and any work details are dropped
+        $this->go('basic', $this->basic(['father_title' => 'Late', 'father_occupation' => '', 'father_mobile' => '', 'mother_mobile' => '98111 22244',
+            'mother_tongue' => 'Other', 'mother_tongue_other' => 'Khasi']))->assertSessionHasNoErrors();
+        $app = $this->user->application()->first();
+        $this->assertNull($app->father_office_address);
+        $this->assertNull($app->father_mobile);
+        $this->assertSame('9811122244', $app->mother_mobile);
+        $this->assertSame('Khasi', $app->mother_tongue_other);
     }
 
     public function test_christian_details_are_required_and_encrypted(): void
@@ -157,7 +175,7 @@ class ApplicationFormTest extends TestCase
 
         $app->refresh();
         $this->assertSame(Application::SUBMITTED, $app->status);
-        $this->assertMatchesRegularExpression('/^SSC27\d{6}$/', $app->application_no);
+        $this->assertMatchesRegularExpression('/^UGADM27\d{5}$/', $app->application_no);
         Notification::assertSentTo($this->user, ApplicationSubmitted::class);
 
         // locked after submission

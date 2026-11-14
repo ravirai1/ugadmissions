@@ -34,6 +34,9 @@ return [
     // Idle timeout for staff sessions (minutes).
     'admin_idle_minutes' => (int) env('ADMIN_IDLE_MINUTES', 30),
 
+    // Application numbers: prefix + 5-digit serial, e.g. UGADM2700001.
+    'application_no_prefix' => 'UGADM27',
+
     'contact' => [
         'email' => env('ADMISSIONS_EMAIL', 'admissions@ststephens.edu'),
         'phone' => env('ADMISSIONS_PHONE', '+91-11-27667271'),

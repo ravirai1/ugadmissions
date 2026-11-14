@@ -23,7 +23,11 @@ trait FillsApplication
     private function basic(array $o = []): array
     {
         return array_merge([
-            'dob' => '2008-05-10', 'gender' => 'Female', 'father_name' => 'John Thomas', 'mother_name' => 'Mary Thomas',
+            'dob' => '2008-05-10', 'gender' => 'Female', 'blood_group' => 'B+', 'nationality' => 'Indian', 'mother_tongue' => 'Malayalam',
+            'father_title' => 'Dr.', 'father_name' => 'John Thomas', 'father_qualification' => 'Postgraduate', 'father_occupation' => 'Teaching / academic',
+            'father_designation' => 'Associate Professor', 'father_organisation' => 'University of Delhi', 'father_office_address' => 'Faculty of Arts, Delhi 110007',
+            'father_mobile' => '9811122233', 'father_email' => 'john@example.com',
+            'mother_title' => 'Mrs.', 'mother_name' => 'Mary Thomas', 'mother_qualification' => 'Graduate', 'mother_occupation' => 'Homemaker',
             'family_income' => '5_8', 'last_school' => 'Modern School', 'last_school_city' => 'Delhi',
         ], $o);
     }

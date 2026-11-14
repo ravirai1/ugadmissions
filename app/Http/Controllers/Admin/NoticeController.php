@@ -18,7 +18,7 @@ class NoticeController extends Controller
 
     public function create()
     {
-        return view('admin.notices.form', ['notice' => new Notice(['audience' => 'public', 'is_published' => true])]);
+        return view('admin.notices.form', ['notice' => new Notice(['audience' => 'public', 'is_published' => true, 'in_ticker' => true])]);
     }
 
     public function store(Request $request)
@@ -81,6 +81,6 @@ class NoticeController extends Controller
             'audience' => ['required', Rule::in(array_keys(Notice::AUDIENCES))],
         ]);
 
-        return $data + ['is_published' => $request->boolean('is_published'), 'is_pinned' => $request->boolean('is_pinned')];
+        return $data + ['is_published' => $request->boolean('is_published'), 'is_pinned' => $request->boolean('is_pinned'), 'in_ticker' => $request->boolean('in_ticker')];
     }
 }

@@ -39,7 +39,7 @@ class HelpdeskPrintNoticeTest extends TestCase
         $this->user = User::factory()->create();
         $this->base = '/'.config('admissions.admin_path');
         Notification::fake();
-        Storage::fake('local');
+        Storage::fake('documents');
     }
 
     private function staff(string $role): Admin
@@ -150,7 +150,7 @@ class HelpdeskPrintNoticeTest extends TestCase
 
         $this->as($this->staff(Roles::HELPDESK))->get($this->base.'/print')->assertForbidden();
         $this->as($pr)->get($this->base.'/print?q=SSC27000001')->assertOk()->assertSee('SSC27000001')->assertSee($receipt->receipt_no);
-        $this->as($pr)->get($this->base."/print/application/{$app->id}")->assertOk()->assertSee('SSC27000001')->assertSee('Printed by '.$pr->name);
+        $this->as($pr)->get($this->base."/print/application/{$app->id}")->assertOk()->assertSee('SSC27000001')->assertSee('Printed by '.$pr->name)->assertSee('Dr. John Thomas')->assertSee('Associate Professor');
         $this->as($pr)->get($this->base.'/print/bulk?course_id='.Course::where('code', 'BSC-PHY')->value('id'))->assertOk()->assertSee('SSC27000001');
         $this->as($pr)->get($this->base.'/print/bulk?course_id='.Course::where('code', 'BA-ECO')->value('id'))->assertOk()->assertDontSee('SSC27000001');
         $this->as($pr)->get($this->base."/payments/{$receipt->id}/receipt")->assertOk();

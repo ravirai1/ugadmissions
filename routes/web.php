@@ -4,6 +4,9 @@ use App\Http\Controllers\Admin;
 use App\Http\Controllers\Applicant;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\PageController;
+use App\Support\ApplicationAccess;
+use App\Support\ApplicationSteps;
+use App\Support\MasterData;
 use App\Support\Roles;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +19,8 @@ Route::controller(PageController::class)->group(function () {
     Route::get('/faq', 'faq')->name('faq');
     Route::get('/contact', 'contact')->name('contact');
     Route::get('/notices', 'notices')->name('notices');
+    Route::get('/prospectus', 'prospectus')->name('prospectus');
+    Route::get('/prospectus/file', 'prospectusFile')->name('prospectus.file');
     Route::get('/documents-required', 'documents')->name('documents');
     Route::get('/christian-students', 'christianGuidelines')->name('christian');
     Route::get('/legal/{page}', 'legal')->name('legal')
@@ -57,7 +62,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('verified')->prefix('application')->name('application.')->controller(Applicant\ApplicationController::class)->group(function () {
-        $steps = implode('|', App\Support\ApplicationSteps::slugs());
+        $steps = implode('|', ApplicationSteps::slugs());
         Route::get('/', 'start')->name('start');
         Route::post('/submit', 'submit')->middleware('throttle:app-submit')->name('submit');
         Route::post('/documents/{type}', 'upload')->middleware('throttle:app-upload')->name('upload')->where('type', '[a-z0-9_]+');
@@ -134,7 +139,7 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
             ->middleware('role:'.Roles::ADMIN.','.Roles::ACCOUNTS)->name('dashboard.export');
 
         // Applications (each role sees only its own list; see App\Support\ApplicationAccess)
-        Route::middleware('role:'.implode(',', App\Support\ApplicationAccess::VIEW_ROLES))->prefix('applications')->name('applications.')
+        Route::middleware('role:'.implode(',', ApplicationAccess::VIEW_ROLES))->prefix('applications')->name('applications.')
             ->controller(Admin\ApplicationController::class)->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::get('/export', 'export')->name('export');
@@ -155,7 +160,7 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
 
         // Master data and fees (admin)
         Route::middleware('role:'.Roles::ADMIN)->group(function () {
-            $types = implode('|', array_keys(App\Support\MasterData::types()));
+            $types = implode('|', array_keys(MasterData::types()));
             Route::prefix('master/{type}')->name('master.')->where(['type' => $types])->controller(Admin\MasterDataController::class)->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::get('/create', 'create')->name('create');
@@ -213,6 +218,12 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
             Route::put('/{notice}', 'update')->name('update')->whereNumber('notice');
             Route::delete('/{notice}', 'destroy')->name('destroy')->whereNumber('notice');
             Route::post('/{notice}/email', 'email')->name('email')->whereNumber('notice');
+        });
+
+        Route::middleware('role:'.Roles::ADMIN)->prefix('prospectus')->name('prospectus.')->controller(Admin\ProspectusController::class)->group(function () {
+            Route::get('/', 'edit')->name('edit');
+            Route::post('/', 'update')->name('update');
+            Route::delete('/', 'destroy')->name('destroy');
         });
 
         Route::middleware('role:'.Roles::ADMIN.','.Roles::PRINT)->prefix('print')->name('print.')->controller(Admin\PrintController::class)->group(function () {

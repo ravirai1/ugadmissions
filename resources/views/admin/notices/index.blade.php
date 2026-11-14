@@ -16,7 +16,7 @@
                 <tr>
                     <td>@if ($n->is_pinned)<i class="fas fa-thumbtack text-warning me-1" title="Pinned"></i>@endif<strong>{{ $n->title }}</strong><br><span class="small text-muted">{{ $n->author?->name }} · {{ $ist($n->created_at) }}</span></td>
                     <td class="small">{{ \App\Models\Notice::AUDIENCES[$n->audience] ?? $n->audience }}</td>
-                    <td>@if ($n->is_published)<span class="badge bg-success">Published</span><br><span class="small text-muted">{{ $ist($n->published_at) }}</span>@else<span class="badge bg-secondary">Draft</span>@endif</td>
+                    <td>@if ($n->is_published)<span class="badge bg-success">Published</span><br><span class="small text-muted">{{ $ist($n->published_at) }}</span>@else<span class="badge bg-secondary">Draft</span>@endif @if ($n->in_ticker && $n->audience === 'public')<br><span class="badge bg-info">Scrolling bar</span>@endif</td>
                     <td class="small">
                         @if ($n->emailed_at)
                             Sent to {{ number_format($n->emailed_count) }}<br><span class="text-muted">{{ $ist($n->emailed_at) }}</span>

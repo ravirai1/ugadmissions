@@ -23,17 +23,22 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        $request->merge([
-            'email' => strtolower(trim((string) $request->input('email'))),
-            'cuet_no' => preg_replace('/\s+/', '', (string) $request->input('cuet_no')),
-            'mobile' => preg_replace('/\D/', '', (string) $request->input('mobile')),
-        ]);
+        $clean = [
+            'name' => fn ($v) => preg_replace('/\s+/', ' ', trim((string) $v)),
+            'email' => fn ($v) => strtolower(trim((string) $v)),
+            'cuet_no' => fn ($v) => preg_replace('/\s+/', '', (string) $v),
+            'mobile' => fn ($v) => preg_replace('/\D/', '', (string) $v),
+        ];
+        // Each field is typed twice (paste is blocked on the form) to catch typing mistakes.
+        foreach ($clean as $field => $fn) {
+            $request->merge([$field => $fn($request->input($field)), $field.'_confirmation' => $fn($request->input($field.'_confirmation'))]);
+        }
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s.\'-]+$/u'],
-            'email' => ['required', 'email:rfc', 'max:150', 'unique:users,email'],
-            'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/'],
-            'cuet_no' => ['required', 'regex:'.config('admissions.cuet_regex'), 'unique:users,cuet_no'],
+            'name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s.\'-]+$/u', 'confirmed'],
+            'email' => ['required', 'email:rfc', 'max:150', 'unique:users,email', 'confirmed'],
+            'mobile' => ['required', 'regex:/^[6-9][0-9]{9}$/', 'confirmed'],
+            'cuet_no' => ['required', 'regex:'.config('admissions.cuet_regex'), 'unique:users,cuet_no', 'confirmed'],
             'password' => ['required', 'confirmed', StrongPassword::rule()],
             'captcha' => ['required', new ValidCaptcha('register')],
         ], [
@@ -41,6 +46,11 @@ class AuthController extends Controller
             'mobile.regex' => 'Enter a valid 10-digit Indian mobile number.',
             'cuet_no.regex' => 'CUET application number must start with '.config('admissions.cuet_prefix').' and contain only digits.',
             'cuet_no.unique' => 'An account already exists for this CUET application number.',
+            'name.confirmed' => 'The two names do not match.',
+            'email.confirmed' => 'The two email addresses do not match.',
+            'mobile.confirmed' => 'The two mobile numbers do not match.',
+            'cuet_no.confirmed' => 'The two CUET application numbers do not match.',
+            'password.confirmed' => 'The two passwords do not match.',
         ]);
 
         $user = User::create($data);

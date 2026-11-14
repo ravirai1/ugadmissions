@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notice;
+use App\Support\Prospectus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PageController extends Controller
 {
@@ -16,6 +18,29 @@ class PageController extends Controller
     public function notices(Request $request)
     {
         return view('pages.notices', ['notices' => Notice::forUser($request->user()?->hasVerifiedEmail() ? $request->user() : null)->paginate(20)]);
+    }
+
+    /** The prospectus as a page-turning book, with a download link. */
+    public function prospectus()
+    {
+        abort_unless($p = Prospectus::current(), 404);
+
+        return view('pages.prospectus', ['prospectus' => $p]);
+    }
+
+    /** The prospectus PDF itself (shown inline, or downloaded with ?download=1). */
+    public function prospectusFile(Request $request)
+    {
+        $p = Prospectus::current();
+        abort_unless($p && Storage::disk('documents')->exists($p['path']), 404);
+        $name = 'SSC-UG-Prospectus-2027.pdf';
+        $res = Storage::disk('documents')->response($p['path'], $name, [
+            'Content-Type' => 'application/pdf',
+            'Cache-Control' => 'public, max-age=300',
+            'X-Content-Type-Options' => 'nosniff',
+        ], $request->boolean('download') ? 'attachment' : 'inline');
+
+        return $res;
     }
 
     public function about()
