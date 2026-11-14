@@ -38,7 +38,7 @@ class ScrutinyTest extends TestCase
         $this->user = User::factory()->create();
         $this->base = '/'.config('admissions.admin_path');
         Notification::fake();
-        Storage::fake('local');
+        Storage::fake('documents');
     }
 
     private function staff(string $role, ?int $dept = null): Admin

@@ -18,6 +18,7 @@ use App\Services\DocumentStore;
 use App\Services\Eligibility;
 use App\Support\ApplicationSteps;
 use App\Support\DocumentTypes;
+use App\Support\PersonalDetails;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -95,7 +96,7 @@ class ApplicationController extends Controller
     private function viewData(Application $app, string $step): array
     {
         return match ($step) {
-            'basic' => ['incomes' => self::INCOME_RANGES, 'genders' => self::GENDERS],
+            'basic' => ['incomes' => self::INCOME_RANGES, 'genders' => self::GENDERS, 'pd' => PersonalDetails::class],
             'address' => [
                 'states' => State::where('is_active', true)->orderBy('sort')->orderBy('name')->get(['id', 'name']),
                 'districts' => District::where('is_active', true)->orderBy('name')->get(['id', 'state_id', 'name'])->groupBy('state_id')
@@ -192,15 +193,57 @@ class ApplicationController extends Controller
 
     private function saveBasic(Request $request, Application $app): void
     {
-        $data = $request->validate([
+        $name = ['required', 'string', 'max:100', 'regex:/^[\pL\s.\'-]+$/u'];
+        $rules = [
             'dob' => ['required', 'date', 'before:2012-01-01', 'after:1990-01-01'],
             'gender' => ['required', Rule::in(self::GENDERS)],
-            'father_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s.\'-]+$/u'],
-            'mother_name' => ['required', 'string', 'max:100', 'regex:/^[\pL\s.\'-]+$/u'],
+            'blood_group' => ['required', Rule::in(PersonalDetails::BLOOD_GROUPS)],
+            'nationality' => ['required', Rule::in(PersonalDetails::NATIONALITIES)],
+            'mother_tongue' => ['required', Rule::in(PersonalDetails::MOTHER_TONGUES)],
+            'mother_tongue_other' => ['nullable', 'required_if:mother_tongue,Other', 'string', 'max:60'],
             'family_income' => ['required', Rule::in(array_keys(self::INCOME_RANGES))],
             'last_school' => ['required', 'string', 'max:200'],
             'last_school_city' => ['required', 'string', 'max:100'],
-        ]);
+        ];
+        $messages = ['mother_tongue_other.required_if' => 'Enter your mother tongue.'];
+        foreach (['father' => "Father's", 'mother' => "Mother's"] as $p => $label) {
+            $late = $request->input("{$p}_title") === PersonalDetails::DECEASED;
+            $working = ! $late && in_array($request->input("{$p}_occupation"), PersonalDetails::WORKING, true);
+            $rules += [
+                "{$p}_title" => ['required', Rule::in(PersonalDetails::TITLES)],
+                "{$p}_name" => $name,
+                "{$p}_qualification" => ['required', Rule::in(PersonalDetails::QUALIFICATIONS)],
+                "{$p}_occupation" => [$late ? 'nullable' : 'required', Rule::in(PersonalDetails::occupations())],
+                "{$p}_designation" => [$working ? 'required' : 'nullable', 'string', 'max:100'],
+                "{$p}_organisation" => [$working ? 'required' : 'nullable', 'string', 'max:150'],
+                "{$p}_office_address" => [$working ? 'required' : 'nullable', 'string', 'max:300'],
+                "{$p}_mobile" => ['nullable', 'regex:/^[6-9][0-9]{9}$/'],
+                "{$p}_email" => ['nullable', 'email:rfc', 'max:150'],
+            ];
+            $messages += [
+                "{$p}_designation.required" => "Enter the {$label} designation.",
+                "{$p}_organisation.required" => 'Enter where the '.strtolower(rtrim($label, "'s")).' works.',
+                "{$p}_office_address.required" => "Enter the {$label} office address.",
+                "{$p}_mobile.regex" => 'Enter a valid 10-digit mobile number.',
+            ];
+        }
+        $request->merge(collect(['father_mobile', 'mother_mobile'])->mapWithKeys(fn ($f) => [$f => preg_replace('/\D/', '', (string) $request->input($f)) ?: null])->all());
+        $data = $request->validate($rules, $messages);
+        if (empty($data['father_mobile']) && empty($data['mother_mobile'])) {
+            throw ValidationException::withMessages(['father_mobile' => 'Give a mobile number for at least one parent.']);
+        }
+        if ($data['mother_tongue'] !== 'Other') {
+            $data['mother_tongue_other'] = null;
+        }
+        foreach (['father', 'mother'] as $p) {
+            // clear work details that no longer apply
+            if (($data["{$p}_title"] === PersonalDetails::DECEASED) || ! in_array($data["{$p}_occupation"] ?? null, PersonalDetails::WORKING, true)) {
+                $data["{$p}_designation"] = $data["{$p}_organisation"] = $data["{$p}_office_address"] = null;
+            }
+            if ($data["{$p}_title"] === PersonalDetails::DECEASED) {
+                $data["{$p}_occupation"] = $data["{$p}_mobile"] = $data["{$p}_email"] = null;
+            }
+        }
 
         $genderChanged = $app->gender && $app->gender !== $data['gender'];
         $app->fill($data)->save();
@@ -462,7 +505,7 @@ class ApplicationController extends Controller
     {
         abort_unless($document->application->user_id === $request->user()->id, 404);
 
-        return Storage::disk('local')->response($document->path, $document->original_name, [
+        return Storage::disk('documents')->response($document->path, $document->original_name, [
             'Content-Type' => $document->mime,
             'X-Content-Type-Options' => 'nosniff',
             'Content-Disposition' => ($document->isImage() || $document->mime === 'application/pdf' ? 'inline' : 'attachment').'; filename="'.$document->type.'.'.pathinfo($document->path, PATHINFO_EXTENSION).'"',
@@ -487,7 +530,7 @@ class ApplicationController extends Controller
             $app->submitted_at = now();
             $app->submitted_ip = $request->ip();
             $app->save();
-            $app->application_no = 'SSC27'.str_pad((string) $app->id, 6, '0', STR_PAD_LEFT);
+            $app->application_no = config('admissions.application_no_prefix', 'UGADM27').str_pad((string) $app->id, 5, '0', STR_PAD_LEFT);
             $app->save();
         });
 

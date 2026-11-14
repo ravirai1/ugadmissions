@@ -26,9 +26,14 @@
             <input class="form-check-input" type="checkbox" id="is_published" name="is_published" value="1" @checked(old('is_published', $notice->is_published))>
             <label class="form-check-label" for="is_published">Published</label>
         </div>
-        <div class="form-check mb-3">
+        <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" id="is_pinned" name="is_pinned" value="1" @checked(old('is_pinned', $notice->is_pinned))>
             <label class="form-check-label" for="is_pinned">Pin to the top</label>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="in_ticker" name="in_ticker" value="1" @checked(old('in_ticker', $notice->in_ticker))>
+            <label class="form-check-label" for="in_ticker">Show in the scrolling notice bar on the website</label>
+            <div class="form-text">Only for notices that everyone can see. The bar shows at the top of every public page.</div>
         </div>
         <button class="btn btn-primary" type="submit">Save</button>
         <a href="{{ route('admin.notices.index') }}" class="btn btn-outline-secondary">Cancel</a>

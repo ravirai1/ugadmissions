@@ -38,6 +38,27 @@ return [
             'report' => false,
         ],
 
+        // Applicants' documents, helpdesk screenshots and the prospectus PDF.
+        // DOCUMENTS_DISK=s3 stores them in a private AWS S3 bucket (AWS_* settings below); otherwise on this server.
+        'documents' => env('DOCUMENTS_DISK', 'local') === 's3' ? [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'ap-south-1'),
+            'bucket' => env('AWS_BUCKET'),
+            'url' => env('AWS_URL'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ] : [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

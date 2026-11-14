@@ -85,6 +85,7 @@
                     @endif
                     @if ($me->hasRole($R::ADMIN))
                         {!! $item('admin.notices.index', 'fa-bullhorn', 'Notices', 'admin.notices.*') !!}
+                        {!! $item('admin.prospectus.edit', 'fa-book', 'Prospectus', 'admin.prospectus.*') !!}
                         {!! $section('Setup') !!}
                         <li class="nav-item {{ request()->routeIs('admin.master.*') ? 'active' : '' }}"><a href="{{ route('admin.master.index', 'courses') }}"><i class="fas fa-database"></i><p>Master Data</p></a></li>
                     @endif

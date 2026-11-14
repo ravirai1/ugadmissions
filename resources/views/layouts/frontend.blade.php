@@ -50,6 +50,9 @@
                         <a href="{{ route('documents') }}" class="nav-item nav-link {{ request()->routeIs('documents') ? 'active' : '' }}">Documents</a>
                         <a href="{{ route('christian') }}" class="nav-item nav-link {{ request()->routeIs('christian') ? 'active' : '' }}">Christian Students</a>
                         <a href="{{ route('notices') }}" class="nav-item nav-link {{ request()->routeIs('notices') ? 'active' : '' }}">Notices</a>
+                        @if (\App\Support\Prospectus::exists())
+                            <a href="{{ route('prospectus') }}" class="nav-item nav-link {{ request()->routeIs('prospectus*') ? 'active' : '' }}">Prospectus</a>
+                        @endif
                         <a href="{{ route('faq') }}" class="nav-item nav-link {{ request()->routeIs('faq') ? 'active' : '' }}">FAQ</a>
                         <a href="{{ route('contact') }}" class="nav-item nav-link {{ request()->routeIs('contact') ? 'active' : '' }}">Contact</a>
                     </div>
@@ -65,6 +68,24 @@
             </nav>
         </div>
     </div>
+
+    @php $tickerNotices = \App\Models\Notice::ticker(); @endphp
+    @if ($tickerNotices->isNotEmpty())
+        <div class="ssc-ticker" role="region" aria-label="Latest notices">
+            <a href="{{ route('notices') }}" class="ssc-ticker-label"><i class="fa fa-bullhorn me-2"></i>Notices</a>
+            <div class="ssc-ticker-track">
+                <div class="ssc-ticker-move">
+                    @foreach ([0, 1] as $copy)
+                        <span class="ssc-ticker-set" @if ($copy) aria-hidden="true" @endif>
+                            @foreach ($tickerNotices as $t)
+                                <a href="{{ route('notices') }}#notice-{{ $t['id'] }}" @if ($copy) tabindex="-1" @endif>@if ($t['new'])<span class="ssc-new">New</span>@endif{{ $t['title'] }}</a>
+                            @endforeach
+                        </span>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    @endif
 
     @hasSection('page_title')
         <div class="container-fluid page-header py-5 mb-5">

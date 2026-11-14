@@ -16,6 +16,7 @@ class Helpdesk
 {
     /** Applicants may attach screenshots (images); staff may also attach PDFs. */
     public const USER_MIMES = ['image/jpeg', 'image/png'];
+
     public const STAFF_MIMES = ['image/jpeg', 'image/png', 'application/pdf'];
 
     public static function attachmentRules(bool $staff = false): array
@@ -97,7 +98,7 @@ class Helpdesk
                 throw ValidationException::withMessages(['attachment' => 'The image appears to be damaged.']);
             }
             $ext = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'application/pdf' => 'pdf'][$mime] ?? 'bin';
-            $path = $file->storeAs('helpdesk/'.$t->id, bin2hex(random_bytes(10)).'.'.$ext, 'local');
+            $path = $file->storeAs('helpdesk/'.$t->id, bin2hex(random_bytes(10)).'.'.$ext, 'documents');
         }
 
         return $t->messages()->create(['sender' => $sender, 'admin_id' => $admin?->id, 'body' => $body, 'attachment_path' => $path, 'attachment_mime' => $mime]);

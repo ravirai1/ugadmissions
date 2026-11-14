@@ -15,7 +15,7 @@ class ApplicantAuthTest extends TestCase
 
     private function payload(array $overrides = []): array
     {
-        return array_merge([
+        $data = array_merge([
             'name' => 'Asha Thomas',
             'email' => 'asha@example.com',
             'mobile' => '9876543210',
@@ -24,6 +24,12 @@ class ApplicantAuthTest extends TestCase
             'password_confirmation' => 'Secret@123',
             'captcha' => 'test-pass',
         ], $overrides);
+        // each detail is typed twice on the form
+        foreach (['name', 'email', 'mobile', 'cuet_no'] as $f) {
+            $data[$f.'_confirmation'] ??= $data[$f];
+        }
+
+        return $data;
     }
 
     public function test_public_pages_load_with_security_headers(): void
@@ -65,6 +71,16 @@ class ApplicantAuthTest extends TestCase
     {
         $this->get('/register');
         $this->post('/register', $this->payload(['captcha' => '999']))->assertSessionHasErrors('captcha');
+    }
+
+    public function test_every_detail_must_be_typed_twice_the_same(): void
+    {
+        $this->get('/register')->assertOk()->assertSee('data-no-paste', false)->assertSee('name="cuet_no_confirmation"', false);
+        foreach (['name' => 'Asha Tomas', 'email' => 'asha@example.org', 'mobile' => '9876543211', 'cuet_no' => '271234567891'] as $f => $wrong) {
+            $this->post('/register', $this->payload([$f.'_confirmation' => $wrong]))->assertSessionHasErrors($f);
+        }
+        $this->post('/register', $this->payload(['email' => 'Asha@Example.com', 'email_confirmation' => ' asha@example.com ']))->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('users', 1);
     }
 
     public function test_cuet_number_is_unique(): void

@@ -109,7 +109,7 @@ class HelpdeskController extends Controller
     {
         abort_unless($message->attachment_path, 404);
 
-        return Storage::disk('local')->response($message->attachment_path, null, [
+        return Storage::disk('documents')->response($message->attachment_path, null, [
             'Content-Type' => $message->attachment_mime, 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store',
         ]);
     }

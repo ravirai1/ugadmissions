@@ -48,7 +48,7 @@ class DocumentStore
         }
 
         $ext = array_search($mime, DocumentTypes::MIMES, true) ?: $file->extension();
-        $path = $file->storeAs('applications/'.$app->id, $type.'-'.bin2hex(random_bytes(8)).'.'.$ext, 'local');
+        $path = $file->storeAs('applications/'.$app->id, $type.'-'.bin2hex(random_bytes(8)).'.'.$ext, 'documents');
 
         return DB::transaction(function () use ($app, $type, $file, $path, $mime, $replace, $queryId) {
             if ($replace) {
