@@ -64,6 +64,7 @@
                         {!! $item('admin.panel.index', 'fa-pen', 'Interview Marks', 'admin.panel.*') !!}
                     @endif
                     @if ($me->hasRole($R::ADMIN))
+                        {!! $item('admin.seats.index', 'fa-th', 'Seat Matrix', 'admin.seats.*') !!}
                         {!! $item('admin.merit.index', 'fa-list-ol', 'Merit Lists', 'admin.merit.*') !!}
                         {!! $item('admin.allotment.index', 'fa-th-large', 'Seat Allotment', 'admin.allotment.index') !!}
                         {!! $item('admin.allotment.selections', 'fa-user-graduate', 'Selected List', 'admin.allotment.selections') !!}

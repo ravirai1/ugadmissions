@@ -31,7 +31,7 @@
                     <td class="text-end">{{ number_format($r['class12'], 2) }}</td>
                     <td class="small">
                         @if ($s)
-                            @php $cls = ['accepted' => 'bg-success', 'offered' => 'bg-primary', 'next' => 'bg-info', 'elsewhere' => 'bg-secondary', 'declined' => 'bg-danger', 'lapsed' => 'bg-warning text-dark', 'waiting' => 'bg-light text-dark'][$s['kind']] ?? 'bg-light text-dark'; @endphp
+                            @php $cls = ['accepted' => 'bg-success', 'offered' => 'bg-primary', 'next' => 'bg-info', 'elsewhere' => 'bg-secondary', 'declined' => 'bg-danger', 'lapsed' => 'bg-warning text-dark', 'upgraded' => 'bg-secondary', 'waiting' => 'bg-light text-dark'][$s['kind']] ?? 'bg-light text-dark'; @endphp
                             <span class="badge {{ $cls }}">{{ $s['label'] }}</span>
                         @endif
                     </td>

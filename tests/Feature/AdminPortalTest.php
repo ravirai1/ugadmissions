@@ -120,15 +120,33 @@ class AdminPortalTest extends TestCase
 
         $course = Course::where('code', 'BSC-PHY')->first();
         $form = ['code' => 'BSC-PHY', 'name' => $course->name, 'is_active' => 1, 'offered_at_jmc' => 0, 'sort' => 1];
-        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => '{"class12_required": ["PHYX"]}'])->assertSessionHasErrors('eligibility');
-        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => '{"foo": 1}'])->assertSessionHasErrors('eligibility');
-        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => 'not json'])->assertSessionHasErrors('eligibility');
-        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => '{"class12_required": ["PHY"]}', 'seats' => '{"UR": "ten"}'])->assertSessionHasErrors('seats');
-        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => '{"class12_required": ["PHY","MAT"], "min_class12_percent": 60, "languages": {"count": 1, "allowed": null}, "combinations": [{"label": "PCM", "papers": ["PHY","CHE","MAT"]}]}', 'seats' => '{"UR": 20, "SC": 3}'])
-            ->assertSessionHasNoErrors();
+        $this->as($admin)->get("$this->base/master/courses/{$course->id}/edit")->assertOk()->assertSee('Fixed subject combinations')->assertSee('PCM (Physics, Chemistry, Mathematics)');
+        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => ['class12_required' => ['PHYX'], 'languages' => ['count' => 1]]])->assertSessionHasErrors('eligibility');
+        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => ['class12_required' => ['PHY']]])->assertSessionHasErrors('eligibility'); // no papers counted
+        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => ['languages' => ['count' => 1], 'domains' => ['count' => 2], 'combinations' => [['label' => 'PCM', 'papers' => ['PHY', 'CHE', 'MAT']]]]])->assertSessionHasErrors('eligibility');
+        $this->as($admin)->put("$this->base/master/courses/{$course->id}", $form + ['eligibility' => [
+            'class12_required' => ['PHY', 'MAT'], 'min_class12_percent' => '60', 'languages' => ['count' => '1'], 'domains' => ['count' => '0'],
+            'combinations' => [['label' => 'PCM', 'papers' => ['PHY', 'CHE', 'MAT']], ['label' => '', 'papers' => []]], 'programme_options' => '',
+        ]])->assertSessionHasNoErrors();
         $course->refresh();
-        $this->assertSame(60, $course->eligibility['min_class12_percent']);
-        $this->assertSame(20, $course->seats['UR']);
+        $this->assertEquals(['class12_required' => ['PHY', 'MAT'], 'min_class12_percent' => 60, 'languages' => ['count' => 1, 'allowed' => null], 'combinations' => [['label' => 'PCM', 'papers' => ['PHY', 'CHE', 'MAT']]]], $course->eligibility);
+
+        // course can be switched off and on
+        $this->as($admin)->post("$this->base/master/courses/{$course->id}/toggle");
+        $this->assertFalse($course->refresh()->is_active);
+
+        // seat matrix, with PwBD supernumerary seats
+        $this->as($admin)->get("$this->base/seats")->assertOk()->assertSee('PwBD (extra)');
+        $eco = Course::where('code', 'BA-ECO')->first();
+        $this->as($admin)->put("$this->base/seats", ['pwbd_percent' => 5, 'seats' => [$course->id => ['UR' => 'ten']]])->assertSessionHasErrors();
+        $this->as($admin)->put("$this->base/seats", ['pwbd_percent' => 5, 'seats' => [
+            $course->id => ['UR' => 20, 'OBC' => 10, 'SC' => '', 'CNI' => 5, 'PWBD' => ''],
+            $eco->id => ['UR' => 10, 'PWBD' => 0],
+        ]])->assertSessionHasNoErrors();
+        $this->assertSame(['UR' => 20, 'OBC' => 10, 'CNI' => 5], $course->refresh()->seats);
+        $this->assertSame(['UR' => 20, 'OBC' => 10, 'CNI' => 5, 'PWBD' => 2], \App\Services\AllotmentService::seats($course), '5% of 35, rounded up, as extra seats');
+        $this->assertSame(['UR' => 10], \App\Services\AllotmentService::seats($eco->refresh()), 'PwBD set to 0 for this course');
+        $this->as($this->staff(Roles::ACCOUNTS))->get("$this->base/seats")->assertForbidden();
 
         $this->as($this->staff(Roles::DEPARTMENT))->get("$this->base/master/courses")->assertForbidden();
     }

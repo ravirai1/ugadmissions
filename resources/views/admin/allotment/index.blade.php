@@ -3,7 +3,7 @@
 @section('content')
 @php $ist = fn ($d) => $d ? \Illuminate\Support\Carbon::parse($d)->timezone('Asia/Kolkata')->format('d M Y, h:i A') : ''; @endphp
 <div class="card"><div class="card-body">
-    <p class="small text-muted mb-2">The next round fills each course's vacant seats: General (UR) first by overall merit, then each reserved category. A candidate in several merit lists gets the seat in their highest DU preference where their merit is enough, and is shown as “Already selected – first preference” in the others. Candidates who already have an offer, declined one or let one lapse are not considered again.</p>
+    <p class="small text-muted mb-2">The next round fills each course's vacant seats: General (UR) first by overall merit, then each reserved category. A candidate in several merit lists gets the seat in their highest DU preference where their merit is enough, and is shown as “Already selected – first preference” in the others. Candidates holding an offer can move up to a course they ranked higher (the old seat is released; an accepted seat stays confirmed). Candidates who declined an offer or let one lapse are not considered again.</p>
     @if ($notLocked->isNotEmpty())<p class="small mb-0">Not in this round (marks not finalised): {{ $notLocked->implode(', ') }}.</p>@endif
 </div></div>
 
@@ -17,7 +17,7 @@
                 <thead><tr><th class="text-end">Rank</th><th>Application</th><th>Name</th><th>Category</th><th>Seat</th><th class="text-end">DU pref.</th><th class="text-end">CUET (85)</th><th class="text-end">Interview (15)</th><th class="text-end">Total (100)</th></tr></thead>
                 @foreach ($list->sortBy(fn ($a) => $a['row']['rank']) as $a)
                     @php $r = $a['row']; @endphp
-                    <tr><td class="text-end">{{ $r['rank'] }}</td><td>{{ $r['app']->application_no }}</td><td>{{ $r['app']->user->name }}</td><td>{{ $r['category'] }}</td><td><strong>{{ $a['bucket'] }}</strong></td><td class="text-end">{{ $r['choice']->du_preference }}</td><td class="text-end">{{ number_format($r['cuet'], 2) }}</td><td class="text-end">{{ number_format($r['interview'], 2) }}</td><td class="text-end fw-bold">{{ number_format($r['total'], 2) }}</td></tr>
+                    <tr><td class="text-end">{{ $r['rank'] }}</td><td>{{ $r['app']->application_no }}</td><td>{{ $r['app']->user->name }}</td><td>{{ $r['category'] }}</td><td><strong>{{ $a['bucket'] }}</strong>@if ($a['from'])<br><span class="badge bg-info">Moving up from {{ $a['from']->course->name }}</span>@endif</td><td class="text-end">{{ $r['choice']->du_preference }}</td><td class="text-end">{{ number_format($r['cuet'], 2) }}</td><td class="text-end">{{ number_format($r['interview'], 2) }}</td><td class="text-end fw-bold">{{ number_format($r['total'], 2) }}</td></tr>
                 @endforeach
             </table>
         @endif

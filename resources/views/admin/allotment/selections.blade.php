@@ -50,7 +50,7 @@
                     <td>{{ $o->offer_no }}</td><td>{{ $o->round }}</td><td class="small">{{ $o->course->name }}</td><td>{{ $o->seat_category }}</td><td class="text-end">{{ $o->merit_rank }}</td>
                     <td><a href="{{ route('admin.applications.show', $o->application) }}">{{ $o->application->application_no }}</a></td><td>{{ $o->application->user->name }}</td>
                     <td class="text-end">{{ $o->total }}</td>
-                    <td><span class="badge {{ ['accepted' => 'bg-success', 'offered' => 'bg-primary', 'declined' => 'bg-danger', 'lapsed' => 'bg-warning text-dark'][$o->status] }}">{{ \App\Models\SeatOffer::STATUSES[$o->status] }}</span></td>
+                    <td><span class="badge {{ ['accepted' => 'bg-success', 'offered' => 'bg-primary', 'declined' => 'bg-danger', 'lapsed' => 'bg-warning text-dark', 'upgraded' => 'bg-secondary'][$o->status] }}">{{ \App\Models\SeatOffer::STATUSES[$o->status] }}</span></td>
                     <td class="small">{{ $ist($o->deadline_at) }}</td>
                 </tr>
             @empty

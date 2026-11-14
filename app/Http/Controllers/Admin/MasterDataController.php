@@ -141,8 +141,8 @@ class MasterDataController extends Controller
             }
         }
         if ($def['type'] === 'courses') {
+            $data['eligibility'] = self::eligibilityFromForm($data['eligibility'] ?? []);
             $this->checkEligibility($data['eligibility']);
-            $this->checkSeats($data['seats']);
         }
 
         return $data;
@@ -152,8 +152,14 @@ class MasterDataController extends Controller
     private function checkEligibility(mixed $r): void
     {
         $fail = fn (string $m) => throw ValidationException::withMessages(['eligibility' => $m]);
-        if (! is_array($r) || array_is_list($r)) {
-            $fail('Eligibility rules must be a JSON object.');
+        if (! is_array($r)) {
+            $fail('Eligibility rules are missing.');
+        }
+        if (empty($r['languages']) && empty($r['domains']) && empty($r['combinations']) && empty($r['general_test'])) {
+            $fail('Choose which CUET papers count: languages, domain subjects, a fixed combination or the General Test.');
+        }
+        if (! empty($r['combinations']) && ! empty($r['domains'])) {
+            $fail('Use either domain subjects or fixed combinations, not both.');
         }
         $known = ['class12_required', 'min_class12_percent', 'languages', 'domains', 'general_test', 'combinations', 'programme_options'];
         if ($extra = array_diff(array_keys($r), $known)) {
@@ -173,27 +179,53 @@ class MasterDataController extends Controller
         }
         foreach (['languages', 'domains'] as $k) {
             if (isset($r[$k]) && (! is_array($r[$k]) || ! is_int($r[$k]['count'] ?? null) || $r[$k]['count'] < 0 || $r[$k]['count'] > 5)) {
-                $fail("\"$k\" needs a whole-number \"count\" between 0 and 5.");
+                $fail(ucfirst($k).': the number of papers must be between 0 and 5.');
             }
         }
         foreach ($r['combinations'] ?? [] as $c) {
             if (empty($c['label']) || empty($c['papers']) || ! is_array($c['papers'])) {
-                $fail('Each combination needs a "label" and a list of "papers".');
+                $fail('Each combination needs a name and at least one paper.');
             }
         }
         if (isset($r['min_class12_percent']) && (! is_numeric($r['min_class12_percent']) || $r['min_class12_percent'] < 0 || $r['min_class12_percent'] > 100)) {
-            $fail('"min_class12_percent" must be between 0 and 100.');
+            $fail('Minimum Class 12 % must be between 0 and 100.');
         }
     }
 
-    private function checkSeats(mixed $seats): void
+    /** Turns the eligibility form into the rules array used by course selection. Empty parts are left out. */
+    public static function eligibilityFromForm(array $f): array
     {
-        if ($seats === null) {
-            return;
+        $codes = fn ($v) => array_values(array_filter(array_map('strval', (array) ($v ?? [])), fn ($c) => $c !== ''));
+        $r = [];
+        if ($c = $codes($f['class12_required'] ?? [])) {
+            $r['class12_required'] = $c;
         }
-        if (! is_array($seats) || array_is_list($seats) || collect($seats)->contains(fn ($n) => ! is_int($n) || $n < 0)) {
-            throw ValidationException::withMessages(['seats' => 'Seats must be a JSON object of category code to a whole number, e.g. {"UR": 20, "SC": 3}.']);
+        if (($f['min_class12_percent'] ?? '') !== '' && $f['min_class12_percent'] !== null) {
+            $r['min_class12_percent'] = (float) $f['min_class12_percent'];
         }
+        foreach (['languages', 'domains'] as $k) {
+            $count = (int) ($f[$k]['count'] ?? 0);
+            if ($count > 0) {
+                $r[$k] = ['count' => $count, 'allowed' => $codes($f[$k]['allowed'] ?? []) ?: null];
+                if ($k === 'domains' && ($m = $codes($f[$k]['must_include'] ?? []))) {
+                    $r[$k]['must_include'] = $m;
+                }
+            }
+        }
+        if (! empty($f['general_test'])) {
+            $r['general_test'] = true;
+        }
+        $combos = collect($f['combinations'] ?? [])->map(fn ($c) => ['label' => trim((string) ($c['label'] ?? '')), 'papers' => $codes($c['papers'] ?? [])])
+            ->filter(fn ($c) => $c['label'] !== '' || $c['papers'])->values()->all();
+        if ($combos) {
+            $r['combinations'] = $combos;
+        }
+        $opts = array_values(array_filter(array_map('trim', preg_split('/\R/', (string) ($f['programme_options'] ?? '')))));
+        if ($opts) {
+            $r['programme_options'] = $opts;
+        }
+
+        return $r;
     }
 
     private function changed(array $def, string $action, Model $row): void
