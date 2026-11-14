@@ -151,4 +151,37 @@ class SecurityLogsTest extends TestCase
         }
         $this->artisan('security:integrity')->assertSuccessful();
     }
+
+    public function test_registration_needs_privacy_consent_and_records_it(): void
+    {
+        $data = ['name' => 'Meera Paul', 'email' => 'meera@example.com', 'mobile' => '9876543211', 'cuet_no' => '271234567891', 'password' => 'Secret@1234', 'password_confirmation' => 'Secret@1234', 'captcha' => 'test-pass'];
+        foreach (['name', 'email', 'mobile', 'cuet_no'] as $f) {
+            $data[$f.'_confirmation'] = $data[$f];
+        }
+        $this->get('/register')->assertSee('Digital Personal Data Protection Act, 2023');
+        $this->post('/register', $data)->assertSessionHasErrors('consent');
+        $this->post('/register', $data + ['consent' => '1'])->assertSessionHasNoErrors();
+        $this->assertNotNull(User::where('email', 'meera@example.com')->value('consent_at'));
+    }
+
+    public function test_a_password_change_signs_the_account_out_on_other_devices(): void
+    {
+        $this->actingAs($this->user)->get('/applicant/dashboard')->assertOk();
+        $this->user->forceFill(['password' => 'Changed@12345'])->save(); // changed or reset from another device
+        $this->get('/applicant/dashboard')->assertRedirect(route('login'));
+
+        $this->asSuper()->get('/ssc-staff')->assertOk();
+        $this->super->forceFill(['password' => 'Changed@Passw0rd1'])->save();
+        $this->get('/ssc-staff')->assertRedirect(route('admin.login'));
+    }
+
+    public function test_super_admins_are_emailed_on_staff_login_from_a_new_network_and_role_changes(): void
+    {
+        config(['admissions.otp.enabled' => false]);
+        $this->post('/ssc-staff/login', ['email' => $this->super->email, 'password' => 'Str0ng@Passw0rd', 'captcha' => 'test-pass'])->assertRedirect(route('admin.dashboard'));
+        Notification::assertSentTo($this->super, SecurityAlert::class, fn ($n) => str_contains($n->title, 'new network'));
+
+        $this->asSuper()->post('/ssc-staff/staff', ['name' => 'Dr B', 'email' => 'b@ststephens.edu', 'role' => Roles::ACCOUNTS, 'is_active' => 1])->assertSessionHasNoErrors();
+        Notification::assertSentTo($this->super, SecurityAlert::class, fn ($n) => $n->title === 'New staff account created' && str_contains(implode(' ', $n->details), 'b@ststephens.edu'));
+    }
 }

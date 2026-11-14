@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AuditLog;
+use App\Models\StaffActivityLog;
 use App\Notifications\AdminOtp;
 use App\Rules\ValidCaptcha;
 use App\Services\ActivityLogger;
 use App\Services\LoginGuard;
 use App\Services\MathCaptcha;
+use App\Services\SecurityAlerts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -131,8 +133,17 @@ class AuthController extends Controller
             'last_login_at' => now(), 'last_login_ip' => $request->ip(),
         ])->save();
 
+        $known = StaffActivityLog::where('admin_id', $admin->id)->where('event', 'login')->where('ip', $request->ip())->exists();
         $this->loginGuard->recordSuccess($request, 'admin', $admin->email);
         AuditLog::record('auth.login');
+        if (! $known) {
+            app(SecurityAlerts::class)->send('staff-new-ip:'.$admin->id.':'.$request->ip(), 'Staff login from a new network', [
+                'Staff' => $admin->name.' ('.$admin->email.', '.$admin->roleLabel().')',
+                'IP' => (string) $request->ip(),
+                'Browser' => (string) $request->userAgent(),
+                'Note' => 'First login from this IP. If this was not expected, deactivate the account under Staff Accounts.',
+            ], route('admin.security.staff-activity', ['q' => $admin->email]));
+        }
 
         return redirect()->intended(route('admin.dashboard'));
     }

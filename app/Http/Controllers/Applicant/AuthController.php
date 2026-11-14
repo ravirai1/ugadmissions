@@ -42,7 +42,9 @@ class AuthController extends Controller
             'cuet_no' => ['required', 'regex:'.config('admissions.cuet_regex'), 'unique:users,cuet_no', 'confirmed'],
             'password' => ['required', 'confirmed', StrongPassword::rule()],
             'captcha' => ['required', new ValidCaptcha('register')],
+            'consent' => ['accepted'],
         ], [
+            'consent.accepted' => 'Please tick the box to agree to the Privacy Policy and Terms.',
             'name.regex' => 'Name may only contain letters, spaces, dots, hyphens and apostrophes.',
             'mobile.regex' => 'Enter a valid 10-digit Indian mobile number.',
             'cuet_no.regex' => 'CUET application number must start with '.config('admissions.cuet_prefix').' and contain only digits.',
@@ -55,6 +57,7 @@ class AuthController extends Controller
         ]);
 
         $user = User::create($data);
+        $user->forceFill(['consent_at' => now(), 'consent_ip' => $request->ip()])->save();
 
         event(new Registered($user));
         Auth::login($user);

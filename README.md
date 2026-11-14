@@ -43,9 +43,10 @@ Desks in the panel:
 - Daily database backups
 - **Security** (see `config/security.php`):
   - After **every deploy** run `php artisan security:integrity --baseline`. The scheduler then compares all code files (including `public/index.php`) with that version every 5 minutes and emails the super admins if anything changed, was added or deleted, or if a PHP/script file appears in `public/` or `storage/`. Status is shown in Admin → Security → Attack Attempts.
-  - Security alert emails go to every active super admin, or to `SECURITY_ALERT_EMAILS` (comma separated). They are sent for: an IP blocked after attack attempts, a login lockout, an upload with hidden PHP/script code, a payment amount or merchant mismatch, a duplicate payment, and changed website files.
+  - Security alert emails go to every active super admin, or to `SECURITY_ALERT_EMAILS` (comma separated). They are sent for: an IP blocked after attack attempts, a login lockout, a staff login from a new network, a new staff account or role change, an upload with hidden PHP/script code, a payment amount or merchant mismatch, a duplicate payment, and changed website files.
   - Requests that look like SQL injection, script injection, path probing or attack tools are refused (403) and saved; 5 in 60 minutes blocks the IP from the whole site for 24 hours (`SECURITY_BLOCK_AFTER`, `SECURITY_BLOCK_WINDOW`, `SECURITY_BLOCK_MINUTES`). Unblock under Blocked IPs.
   - Apache: `public/.htaccess` already refuses any `.php` file other than `index.php` and all hidden files. On **nginx** add the same: `location ~ /\.(?!well-known) { deny all; }` and `location ~ \.php$ { if ($uri != "/index.php") { return 403; } ... }`.
+  - Changing or resetting a password signs that account out on every other device. Applicants must agree to the Privacy Policy and Terms at registration (DPDP Act, 2023); the time and IP are stored.
   - Applicant and staff activity logs (separate tables) are under Admin → Security; they and attack records are pruned after `ACTIVITY_LOG_DAYS` (default 400).
   - The DU CSAS portal link shown to applicants is `DU_CSAS_URL` (default `https://admission.uod.ac.in`).
 
