@@ -294,4 +294,29 @@ class InterviewMeritTest extends TestCase
         // nothing left to change
         $this->assertSame([], $svc->preview()['assigned']);
     }
+
+    public function test_cst_seats_go_to_christian_scheduled_tribe_applicants(): void
+    {
+        $admin = $this->staff(Roles::ADMIN);
+        $this->as($admin)->get($this->base.'/seats')->assertSee('CST');
+        $this->as($admin)->put($this->base.'/seats', ['pwbd_percent' => 0, 'seats' => [$this->phy->id => ['UR' => 1, 'CNI' => 1, 'CST' => 1]]])->assertSessionHasNoErrors();
+        $this->assertSame(['UR' => 1, 'CNI' => 1, 'CST' => 1], $this->phy->refresh()->seats);
+
+        $top = $this->candidate('Top', [[$this->phy, 1, 700]]);
+        $cni = $this->candidate('CniOne', [[$this->phy, 1, 650]], Category::CHRISTIAN, 'CNI');
+        $cniTwo = $this->candidate('CniTwo', [[$this->phy, 1, 640]], Category::CHRISTIAN, 'CNI');
+        $cst = $this->candidate('CstOne', [[$this->phy, 1, 500]], Category::CHRISTIAN, 'COTH');
+        $cst->forceFill(['is_cst' => true])->save();
+        foreach ([$top, $cni, $cniTwo, $cst] as $a) {
+            $this->interviewed($a, $this->phy, [10]);
+        }
+        app(InterviewService::class)->setLocked($this->phy, true, $admin);
+
+        $assigned = app(AllotmentService::class)->preview()['assigned'];
+        $this->assertSame('UR', $assigned[$top->id]['bucket']);
+        $this->assertSame('CNI', $assigned[$cni->id]['bucket']);
+        $this->assertSame('CST', $assigned[$cst->id]['bucket'], 'the CST seat goes to the CST applicant even below a CNI applicant');
+        $this->assertArrayNotHasKey($cniTwo->id, $assigned);
+        $this->as($admin)->get($this->base."/merit/{$this->phy->id}?category=CST")->assertOk()->assertSee('CstOne')->assertDontSee('CniTwo');
+    }
 }

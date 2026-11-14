@@ -14,11 +14,15 @@ use Illuminate\Http\Request;
 /** Seat matrix: seats per course and category, plus PwBD supernumerary seats. */
 class SeatController extends Controller
 {
-    /** Categories that seats are set for: every category except the Christian parent, in display order (General first). */
+    /**
+     * Seat columns: every category except the Christian parent (General first), then CST.
+     * CST seats go to Christian applicants who declared CST (Christian Scheduled Tribe), whatever their denomination.
+     */
     public static function categories()
     {
         return Category::where('is_active', true)->where('code', '!=', Category::CHRISTIAN)
-            ->orderByRaw('case when parent_code is null then 0 else 1 end')->orderBy('sort')->orderBy('name')->get(['code', 'name']);
+            ->orderByRaw('case when parent_code is null then 0 else 1 end')->orderBy('sort')->orderBy('name')->get(['code', 'name'])
+            ->push(new Category(['code' => 'CST', 'name' => 'CST – Christian Scheduled Tribe']));
     }
 
     public function index()

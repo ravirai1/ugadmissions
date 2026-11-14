@@ -56,9 +56,9 @@ class MeritController extends Controller
         AuditLog::record('merit.export', $course);
 
         return Excel::download('merit-'.$course->code.'.xlsx', ['Merit list' => [
-            'headers' => ['Rank', 'Category rank', 'Application no', 'Name', 'Category', 'PwBD', 'DU preference', 'CUET verified', 'CUET max', 'CUET (85)', 'Interview (15)', 'Panel members', 'Total (100)', 'Class 12 %', 'Date of birth', 'Status'],
+            'headers' => ['Rank', 'Category rank', 'Application no', 'Name', 'Category', 'CST', 'PwBD', 'DU preference', 'CUET verified', 'CUET max', 'CUET (85)', 'Interview (15)', 'Panel members', 'Total (100)', 'Class 12 %', 'Date of birth', 'Status'],
             'rows' => $ranked->map(fn ($r) => [
-                $r['rank'], $r['cat_rank'], $r['app']->application_no, $r['app']->user->name, $r['category'], $r['pwbd'] ? 'Yes' : 'No', $r['choice']->du_preference,
+                $r['rank'], $r['cat_rank'], $r['app']->application_no, $r['app']->user->name, $r['category'], $r['cst'] ? 'Yes' : 'No', $r['pwbd'] ? 'Yes' : 'No', $r['choice']->du_preference,
                 $r['cuet_raw'], $r['cuet_max'], $r['cuet'], $r['interview'], $r['panel'], $r['total'], $r['class12'], $r['app']->dob?->format('d-m-Y'),
                 $status[$r['app']->id]['label'] ?? '',
             ]),

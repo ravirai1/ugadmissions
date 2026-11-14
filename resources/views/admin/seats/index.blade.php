@@ -2,7 +2,7 @@
 @section('title', 'Seat Matrix')
 @section('content')
 <div class="card"><div class="card-body">
-    <p class="small text-muted mb-2">Enter the seats for each course and category. Leave a box empty for no seats. General (UR) seats are filled first by overall merit, then each category from its own candidates. To add a new category, add it under Master Data → Categories and it appears here.</p>
+    <p class="small text-muted mb-2">Enter the seats for each course and category. Leave a box empty for no seats. General (UR) seats are filled first by overall merit, then each category from its own candidates. CST seats go to Christian applicants who declared CST (Christian Scheduled Tribe), filled after the other categories. To add a new category, add it under Master Data → Categories and it appears here.</p>
     <p class="small text-muted"><strong>PwBD seats are supernumerary</strong>: they are extra, on top of the course's seats, and go to PwBD candidates in merit order who did not get a regular seat. Leave the PwBD box empty to use the percentage below (rounded up), or type a number to fix it for that course (0 for none).</p>
     <form method="POST" action="{{ route('admin.seats.update') }}">
         @csrf @method('PUT')

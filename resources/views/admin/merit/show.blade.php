@@ -23,7 +23,7 @@
                     @if ($category)<td class="text-end">{{ $i + 1 }}</td>@endif
                     <td>{{ $r['app']->application_no }}</td>
                     <td>{{ $r['app']->user->name }}</td>
-                    <td>{{ $r['category'] }}@if ($r['pwbd']) <span class="badge bg-info">PwBD</span>@endif</td>
+                    <td>{{ $r['category'] }}@if ($r['cst']) <span class="badge bg-warning text-dark">CST</span>@endif @if ($r['pwbd']) <span class="badge bg-info">PwBD</span>@endif</td>
                     <td class="text-end">{{ $r['choice']->du_preference }}</td>
                     <td class="text-end" title="{{ $r['cuet_raw'] }} / {{ $r['cuet_max'] }}">{{ number_format($r['cuet'], 2) }}</td>
                     <td class="text-end" title="{{ $r['panel'] }} panel members">{{ number_format($r['interview'], 2) }}</td>

@@ -17,7 +17,8 @@ use Illuminate\Validation\ValidationException;
  *
  * - Only courses whose interview marks are finalised take part.
  * - Within a course, General (UR) seats are filled first by overall merit, then each reserved category
- *   (and PWBD) from candidates of that category, in the order the seats are listed for the course.
+ *   from candidates of that category, then CST (Christian Scheduled Tribe) from CST applicants, in the order
+ *   the seats are listed for the course, then PwBD supernumerary seats.
  * - A candidate who is in the merit list of several courses gets the seat in the course they put first
  *   in their DU preferences, among those where their merit is good enough (student-proposing deferred acceptance).
  *   They are shown in the other courses as "Already selected – first preference".
@@ -184,6 +185,7 @@ class AllotmentService
         return match ($bucket) {
             'UR' => true,
             'PWBD' => $row['pwbd'],
+            'CST' => $row['cst'],
             default => $row['category'] === $bucket,
         };
     }
