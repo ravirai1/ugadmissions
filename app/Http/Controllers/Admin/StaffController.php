@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Department;
+use App\Services\SecurityAlerts;
 use App\Support\Roles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -55,6 +56,7 @@ class StaffController extends Controller
             'created_by' => $request->user('admin')->id,
         ]);
         AuditLog::record('staff.create', $staff, ['role' => $staff->role, 'department_id' => $staff->department_id]);
+        $this->alertRole($request, 'New staff account created', $staff);
 
         return redirect()->route('admin.staff.index')
             ->with('status', "Account created for {$staff->email}.")
@@ -74,6 +76,9 @@ class StaffController extends Controller
         $before = $staff->only('role', 'department_id', 'is_active');
         $staff->update($this->validated($request, $staff));
         AuditLog::record('staff.update', $staff, ['before' => $before, 'after' => $staff->only('role', 'department_id', 'is_active')]);
+        if (($before['role'] ?? null) !== $staff->role) {
+            $this->alertRole($request, 'Staff role changed', $staff, ['Previous role' => Roles::labels()[$before['role']] ?? (string) $before['role']]);
+        }
 
         return redirect()->route('admin.staff.index')->with('status', "Saved {$staff->email}.");
     }
@@ -161,5 +166,14 @@ class StaffController extends Controller
     private function tempPassword(): string
     {
         return 'Ssc@'.random_int(1000, 9999).Str::upper(Str::random(3)).Str::lower(Str::random(3)).random_int(10, 99);
+    }
+
+    /** Super admins are emailed whenever someone gets staff access or a different role. */
+    private function alertRole(Request $request, string $title, Admin $staff, array $extra = []): void
+    {
+        app(SecurityAlerts::class)->send('staff-role:'.$staff->id.':'.$staff->role.':'.now()->timestamp, $title, [
+            'Staff' => $staff->name.' ('.$staff->email.')',
+            'Role' => $staff->roleLabel(),
+        ] + $extra + ['Done by' => (string) $request->user('admin')?->email], route('admin.staff.index'));
     }
 }

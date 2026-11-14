@@ -10,6 +10,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\AuthenticateSession;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,7 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(DetectAttacks::class); // before routing, so probes of unknown paths are caught too
-        $middleware->web(append: [SecurityHeaders::class, LogActivity::class]);
+        // AuthenticateSession: changing or resetting a password signs that account out on every other device.
+        $middleware->web(append: [AuthenticateSession::class, SecurityHeaders::class, LogActivity::class]);
 
         $middleware->alias([
             'ip.allowed' => EnsureIpNotBlocked::class,

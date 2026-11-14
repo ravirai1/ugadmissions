@@ -23,6 +23,7 @@ class ApplicantAuthTest extends TestCase
             'password' => 'Secret@123',
             'password_confirmation' => 'Secret@123',
             'captcha' => 'test-pass',
+            'consent' => '1',
         ], $overrides);
         // each detail is typed twice on the form
         foreach (['name', 'email', 'mobile', 'cuet_no'] as $f) {

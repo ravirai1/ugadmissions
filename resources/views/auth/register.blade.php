@@ -65,6 +65,13 @@
                 <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required autocomplete="new-password" data-match="password">
                 <div class="invalid-feedback" data-match-msg>Does not match.</div>
             </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input @error('consent') is-invalid @enderror" type="checkbox" id="consent" name="consent" value="1" required @checked(old('consent'))>
+                <label class="form-check-label small" for="consent">
+                    I have read the <a href="{{ route('legal', 'privacy-policy') }}" target="_blank">Privacy Policy</a> and <a href="{{ route('legal', 'terms-and-conditions') }}" target="_blank">Terms &amp; Conditions</a>, and I consent to St. Stephen's College using the details and documents I give only to process my admission, as the Digital Personal Data Protection Act, 2023 requires. <span class="req">*</span>
+                </label>
+                @error('consent')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
             @include('partials.captcha')
             <button type="submit" class="btn btn-primary w-100 py-2">Create Account</button>
         </form>
