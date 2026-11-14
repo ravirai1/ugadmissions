@@ -527,6 +527,9 @@ class ApplicationController extends Controller
         if ($missing) {
             throw ValidationException::withMessages(['documents' => collect($missing)->map(fn ($t) => 'Please upload: '.DocumentTypes::label($t))->all()]);
         }
+        $request->validate(['photo_declaration' => ['accepted']], ['photo_declaration.accepted' => 'Please confirm that your photograph is recent (last 3 months) with a white background.']);
+        $app->photo_declared_at ??= now();
+        $app->save();
     }
 
     public function upload(Request $request, string $type)

@@ -6,7 +6,7 @@ final class DocumentTypes
 {
     /** type => [label, allowed extensions, max KB] */
     public const TYPES = [
-        'photo' => ['Recent passport-size photograph', ['jpg', 'jpeg', 'png'], 300],
+        'photo' => ['Recent passport-size photograph (last 3 months, white background)', ['jpg', 'jpeg', 'png'], 300],
         'signature' => ['Signature', ['jpg', 'jpeg', 'png'], 150],
         'class10' => ['Class 10 marksheet / certificate', ['jpg', 'jpeg', 'png', 'pdf'], 2048],
         'class12' => ['Class 12 marksheet', ['jpg', 'jpeg', 'png', 'pdf'], 2048],

@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Class12Subject;
 use App\Models\State;
 use App\Models\Subject;
+use Illuminate\Http\UploadedFile;
 
 /** Fills the application form steps through HTTP, as an applicant would. Needs $this->user. */
 trait FillsApplication
@@ -80,5 +81,34 @@ trait FillsApplication
         $this->go('category', $this->christian())->assertSessionHasNoErrors();
         $this->go('academics', $this->academics())->assertSessionHasNoErrors();
         $this->go('cuet', $this->cuet())->assertSessionHasNoErrors();
+    }
+
+    /** A photo (white background, a "face" in the middle) or signature (dark ink on white) that passes the checks. */
+    private function goodImage(string $type, ?array $bg = null): UploadedFile
+    {
+        [$w, $h] = $type === 'photo' ? [350, 450] : [420, 140];
+        $img = imagecreatetruecolor($w, $h);
+        $bgc = $bg ? imagecolorallocate($img, ...$bg) : imagecolorallocate($img, 255, 255, 255);
+        imagefill($img, 0, 0, $bgc);
+        mt_srand(7);
+        if ($type === 'photo') {
+            for ($y = 120; $y < $h; $y++) {           // noisy "face and shoulders" so the file has a realistic size
+                for ($x = 90; $x < $w - 90; $x++) {
+                    imagesetpixel($img, $x, $y, imagecolorallocate($img, mt_rand(80, 200), mt_rand(60, 160), mt_rand(40, 140)));
+                }
+            }
+        } else {
+            $ink = imagecolorallocate($img, 20, 20, 90);
+            imagesetthickness($img, 4);
+            for ($i = 0; $i < 6; $i++) {
+                imageline($img, 30 + $i * 60, 100, 70 + $i * 60, 30, $ink);
+                imagearc($img, 60 + $i * 60, 70, 50, 40, 0, 300, $ink);
+            }
+        }
+        $path = tempnam(sys_get_temp_dir(), 'img').'.jpg';
+        imagejpeg($img, $path, 95);
+        imagedestroy($img);
+
+        return new UploadedFile($path, "$type.jpg", 'image/jpeg', null, true);
     }
 }
