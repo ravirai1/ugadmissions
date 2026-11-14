@@ -72,16 +72,23 @@ class MeritController extends Controller
      */
     private function statuses(Course $course, $ranked): array
     {
-        $offers = SeatOffer::whereIn('application_id', $ranked->map(fn ($r) => $r['app']->id))->with('course')->latest('id')->get()->unique('application_id')->keyBy('application_id');
+        $offers = SeatOffer::whereIn('application_id', $ranked->map(fn ($r) => $r['app']->id))->with('course', 'choice')->latest('id')->get()->unique('application_id')->keyBy('application_id');
         $preview = InterviewService::isLocked($course->id) ? $this->allotment->preview()['assigned'] : [];
         $out = [];
         foreach ($ranked as $r) {
             $id = $r['app']->id;
             $myPref = $r['choice']->du_preference;
-            if ($o = $offers[$id] ?? null) {
-                $out[$id] = $o->course_id === $course->id
-                    ? ['kind' => $o->status, 'label' => SeatOffer::STATUSES[$o->status].' ('.$o->seat_category.', round '.$o->round.')']
-                    : ['kind' => 'elsewhere', 'label' => 'Already selected – first preference: '.$o->course->name];
+            if (($a = $preview[$id] ?? null) && $a['course_id'] === $course->id && $a['from']) {
+                $out[$id] = ['kind' => 'next', 'label' => 'Moves up here in next round ('.$a['bucket'].')'];
+            } elseif ($o = $offers[$id] ?? null) {
+                $out[$id] = match (true) {
+                    $o->course_id === $course->id => ['kind' => $o->status, 'label' => SeatOffer::STATUSES[$o->status].' ('.$o->seat_category.', round '.$o->round.')'],
+                    in_array($o->status, SeatOffer::ACTIVE, true) && $o->choice->du_preference > $myPref => ['kind' => 'waiting', 'label' => 'Waiting (holds a seat in '.$o->course->name.', can move up)'],
+                    default => ['kind' => 'elsewhere', 'label' => 'Already selected – first preference: '.$o->course->name],
+                };
+                if ($o->course_id !== $course->id && ! in_array($o->status, SeatOffer::ACTIVE, true)) {
+                    $out[$id] = ['kind' => $o->status, 'label' => SeatOffer::STATUSES[$o->status].' in '.$o->course->name];
+                }
             } elseif ($a = $preview[$id] ?? null) {
                 $other = $a['course_id'] !== $course->id;
                 $out[$id] = ! $other

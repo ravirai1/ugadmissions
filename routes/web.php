@@ -232,6 +232,8 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
                 Route::post('/course/{course}/lock', 'lock')->name('lock')->whereNumber('course');
                 Route::delete('/letters/{letter}', 'cancel')->name('cancel')->whereNumber('letter');
             });
+            Route::get('/seats', [Admin\SeatController::class, 'index'])->name('seats.index');
+            Route::put('/seats', [Admin\SeatController::class, 'update'])->name('seats.update');
             Route::prefix('merit')->name('merit.')->controller(Admin\MeritController::class)->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::get('/{course}', 'show')->name('show')->whereNumber('course');

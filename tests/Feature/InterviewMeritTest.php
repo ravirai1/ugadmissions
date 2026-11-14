@@ -246,4 +246,52 @@ class InterviewMeritTest extends TestCase
         $this->as($admin)->get($this->base.'/allotment/selected/export')->assertOk();
         $this->as($this->staff(Roles::ACCOUNTS))->get($this->base.'/allotment/selected')->assertForbidden();
     }
+
+    public function test_offer_holders_move_up_to_a_higher_preference_in_later_rounds(): void
+    {
+        $this->phy->update(['seats' => ['UR' => 1]]);
+        $this->eco->update(['seats' => ['UR' => 1]]);
+        $admin = $this->staff(Roles::ADMIN);
+
+        // Lead takes the one Economics seat. Mover prefers Economics but gets Physics in round 1.
+        $lead = $this->candidate('Lead', [[$this->eco, 1, 720]]);
+        $this->interviewed($lead, $this->eco, [14]);
+        $mover = $this->candidate('Mover', [[$this->eco, 1, 700], [$this->phy, 2, 700]]);
+        $this->interviewed($mover, $this->eco, [13]);
+        $this->interviewed($mover, $this->phy, [13]);
+        $next = $this->candidate('Next', [[$this->phy, 1, 600]]);
+        $this->interviewed($next, $this->phy, [12]);
+        $pwbd = $this->candidate('Pwbd', [[$this->phy, 1, 500]], pwbd: true);
+        $this->interviewed($pwbd, $this->phy, [10]);
+        app(InterviewService::class)->setLocked($this->phy, true, $admin);
+        app(InterviewService::class)->setLocked($this->eco, true, $admin);
+
+        // PwBD seats are extra: 5% of 1 seat rounds up to 1, so Pwbd gets a supernumerary Physics seat.
+        $svc = app(AllotmentService::class);
+        $r1 = $svc->publish(now()->addDays(2), $admin)->keyBy('application_id');
+        $this->assertSame($this->eco->id, $r1[$lead->id]->course_id);
+        $this->assertSame($this->phy->id, $r1[$mover->id]->course_id);
+        $this->assertSame('PWBD', $r1[$pwbd->id]->seat_category);
+        $this->assertArrayNotHasKey($next->id, $r1->all());
+        $this->actingAs($mover->user)->get('/applicant/dashboard')->assertSee('you will be moved up if a seat opens');
+
+        // Mover accepts Physics; Lead declines Economics. Round 2 moves Mover up and gives Physics to Next.
+        $svc->respond($r1[$mover->id], true, null);
+        $svc->respond($r1[$lead->id], false, null);
+        $preview = $svc->preview();
+        $this->assertSame($r1[$mover->id]->id, $preview['assigned'][$mover->id]['from']->id);
+        $this->as($admin)->get($this->base.'/allotment')->assertSee('Moving up from B.Sc. (Hons.) Physics');
+
+        $r2 = $svc->publish(now()->addDays(4), $admin)->keyBy('application_id');
+        $this->assertSame($this->eco->id, $r2[$mover->id]->course_id);
+        $this->assertSame(SeatOffer::ACCEPTED, $r2[$mover->id]->status, 'already accepted, so the upgraded seat is confirmed');
+        $this->assertSame(SeatOffer::UPGRADED, $r1[$mover->id]->refresh()->status);
+        $this->assertSame($this->phy->id, $r2[$next->id]->course_id);
+        $this->assertArrayNotHasKey($lead->id, $r2->all(), 'declined candidates are not considered again');
+        $this->assertArrayNotHasKey($pwbd->id, $r2->all(), 'holders staying where they are get no new offer');
+        Notification::assertSentTo($mover->user, SeatOffered::class, fn ($n) => str_contains($n->toMail($mover->user)->subject, 'Seat moved up'));
+
+        // nothing left to change
+        $this->assertSame([], $svc->preview()['assigned']);
+    }
 }

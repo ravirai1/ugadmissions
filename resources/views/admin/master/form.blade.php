@@ -12,8 +12,10 @@
                         $val = old($name, $row->{$name});
                         if ($f['type'] === 'json' && is_array($val)) { $val = json_encode($val, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); }
                     @endphp
-                    <div class="{{ $f['type'] === 'json' ? 'col-12' : 'col-md-6' }}">
-                        @if ($f['type'] === 'bool')
+                    <div class="{{ in_array($f['type'], ['json', 'eligibility'], true) ? 'col-12' : 'col-md-6' }}">
+                        @if ($f['type'] === 'eligibility')
+                            @include('admin.master._eligibility', ['rules' => old($name, $row->{$name}) ?? [], 'label' => $f['label']])
+                        @elseif ($f['type'] === 'bool')
                             <div class="form-check mt-4">
                                 <input type="hidden" name="{{ $name }}" value="0">
                                 <input class="form-check-input" type="checkbox" id="{{ $name }}" name="{{ $name }}" value="1" @checked($val)>
@@ -33,7 +35,7 @@
                             @endif
                             @error($name)<div class="invalid-feedback">{{ $message }}</div>@enderror
                         @endif
-                        @if (! empty($f['help']))<div class="form-text">{{ $f['help'] }}</div>@endif
+                        @if (! empty($f['help']) && $f['type'] !== 'eligibility')<div class="form-text">{{ $f['help'] }}</div>@endif
                     </div>
                 @endforeach
             </div>

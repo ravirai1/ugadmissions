@@ -47,7 +47,9 @@
                     @php
                         $letter = $callLetters->firstWhere('application_course_id', $choice->id);
                         $offer = $offers->firstWhere('application_course_id', $choice->id);
-                        $elsewhere = $activeOffer && $activeOffer->application_course_id !== $choice->id;
+                        $heldPref = $activeOffer ? $app->courses->firstWhere('id', $activeOffer->application_course_id)?->du_preference : null;
+                        $elsewhere = $activeOffer && $activeOffer->application_course_id !== $choice->id && $choice->du_preference > $heldPref;
+                        $canMoveUp = $activeOffer && $activeOffer->application_course_id !== $choice->id && $choice->du_preference < $heldPref;
                     @endphp
                     <tr class="{{ $elsewhere ? 'text-muted' : '' }}">
                         <td>{{ $choice->course->name }} <span class="small text-muted">(DU pref. {{ $choice->du_preference }})</span></td>
@@ -57,6 +59,8 @@
                                 <strong>{{ \App\Models\SeatOffer::STATUSES[$offer->status] }}</strong> · {{ $offer->total }}/100
                             @elseif ($elsewhere)
                                 Already selected – first preference ({{ $activeOffer->course->name }})
+                            @elseif ($canMoveUp)
+                                Waiting list: you will be moved up if a seat opens
                             @endif
                         </td>
                         <td class="text-end text-nowrap">
@@ -71,7 +75,7 @@
                     </tr>
                 @endforeach
             </table>
-            <p class="small text-muted mt-2 mb-0">Merit is out of 100: 85 from your verified CUET score and 15 from the interview. If you are selected in more than one course, you get the seat in the course you put first in your DU preferences.</p>
+            <p class="small text-muted mt-2 mb-0">Merit is out of 100: 85 from your verified CUET score and 15 from the interview. If you are selected in more than one course, you get the seat in the course you put first in your DU preferences. If a seat opens later in a course you placed higher, you are moved up automatically.</p>
         </div>
     @endif
 

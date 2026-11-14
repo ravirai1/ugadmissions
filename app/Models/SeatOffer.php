@@ -11,8 +11,9 @@ class SeatOffer extends Model
     public const ACCEPTED = 'accepted';
     public const DECLINED = 'declined';
     public const LAPSED = 'lapsed';
+    public const UPGRADED = 'upgraded';
 
-    public const STATUSES = [self::OFFERED => 'Offered', self::ACCEPTED => 'Accepted', self::DECLINED => 'Declined', self::LAPSED => 'Lapsed'];
+    public const STATUSES = [self::OFFERED => 'Offered', self::ACCEPTED => 'Accepted', self::DECLINED => 'Declined', self::LAPSED => 'Lapsed', self::UPGRADED => 'Moved to higher preference'];
 
     /** Offers that hold a seat. */
     public const ACTIVE = [self::OFFERED, self::ACCEPTED];
@@ -42,6 +43,11 @@ class SeatOffer extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function upgradedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'upgraded_from_id');
     }
 
     public function canAccept(): bool

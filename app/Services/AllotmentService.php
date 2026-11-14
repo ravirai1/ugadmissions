@@ -21,18 +21,44 @@ use Illuminate\Validation\ValidationException;
  * - A candidate who is in the merit list of several courses gets the seat in the course they put first
  *   in their DU preferences, among those where their merit is good enough (student-proposing deferred acceptance).
  *   They are shown in the other courses as "Already selected – first preference".
- * - Seats held by earlier offers (offered or accepted) are not offered again. Candidates who already
- *   have an offer, or declined one, or let one lapse, are not considered again.
+ * - A candidate holding an offer (offered or accepted) is considered again in later rounds, but only for
+ *   courses they ranked higher in their DU preferences. If they move up, the old seat is released for others;
+ *   if the old seat was already accepted, the new one is confirmed without a new acceptance.
+ * - Candidates who declined an offer or let one lapse are not considered again.
  */
 class AllotmentService
 {
     public function __construct(private MeritService $merit) {}
 
-    /** Seats per category for a course, General first. */
+    /** Default PwBD supernumerary seats as a percentage of a course's intake (used when no number is set for the course). */
+    public static function pwbdPercent(): float
+    {
+        return (float) \App\Models\Setting::get('seats.pwbd_percent', 5);
+    }
+
+    /** PwBD supernumerary seats for an intake: the number set for the course, or the default percentage rounded up. */
+    public static function pwbdSeats(Course $course): int
+    {
+        $set = $course->seats['PWBD'] ?? null;
+        if ($set !== null && $set !== '') {
+            return max(0, (int) $set);
+        }
+        $intake = array_sum(array_map('intval', array_diff_key($course->seats ?? [], ['PWBD' => 1])));
+
+        return (int) ceil($intake * self::pwbdPercent() / 100);
+    }
+
+    /**
+     * Seats per category for a course: General first, then the categories in order, then PwBD.
+     * PwBD seats are supernumerary (extra, on top of the intake) and go only to PwBD candidates not already selected.
+     */
     public static function seats(Course $course): array
     {
-        $seats = array_filter(array_map('intval', $course->seats ?? []), fn ($n) => $n > 0);
+        $seats = array_filter(array_map('intval', array_diff_key($course->seats ?? [], ['PWBD' => 1])), fn ($n) => $n > 0);
         uksort($seats, fn ($a, $b) => ($b === 'UR') <=> ($a === 'UR'));
+        if ($seats && ($pwbd = self::pwbdSeats($course)) > 0) {
+            $seats['PWBD'] = $pwbd;
+        }
 
         return $seats;
     }
@@ -46,30 +72,43 @@ class AllotmentService
     {
         $courses = Course::whereIn('id', InterviewService::lockedCourses())->orderBy('sort')->get()->keyBy('id');
 
-        $previous = SeatOffer::get(['application_id', 'course_id', 'seat_category', 'status']);
-        $excluded = $previous->pluck('application_id')->unique()->flip();
-        $held = $previous->whereIn('status', SeatOffer::ACTIVE)->groupBy('course_id')
-            ->map(fn ($g) => $g->countBy('seat_category')->all());
+        $previous = SeatOffer::with('choice')->get();
+        $active = $previous->whereIn('status', SeatOffer::ACTIVE)->keyBy('application_id');
+        // Declined or lapsed (and holding nothing now): out of later rounds.
+        $excluded = $previous->pluck('application_id')->unique()->reject(fn ($id) => $active->has($id))->flip();
 
         $lists = [];
-        $vacant = [];
+        foreach ($courses as $course) {
+            $lists[$course->id] = $this->merit->forCourse($course)['ranked'];
+        }
+
+        // Offer holders take part only if their course is in this round; they can move up, never down.
+        $holders = $active->filter(fn ($o) => isset($lists[$o->course_id]) && $lists[$o->course_id]->contains(fn ($r) => $r['app']->id === $o->application_id));
+        $fixed = $active->diffKeys($holders)->groupBy('course_id')->map(fn ($g) => $g->countBy('seat_category')->all());
+
+        $capacity = [];
         $prefs = [];
         $rows = [];
         foreach ($courses as $course) {
-            $lists[$course->id] = $this->merit->forCourse($course)['ranked'];
             foreach (self::seats($course) as $cat => $n) {
-                $vacant[$course->id][$cat] = max(0, $n - ($held[$course->id][$cat] ?? 0));
+                $capacity[$course->id][$cat] = max(0, $n - ($fixed[$course->id][$cat] ?? 0));
             }
             foreach ($lists[$course->id] as $r) {
                 $appId = $r['app']->id;
-                if (! isset($excluded[$appId])) {
-                    $prefs[$appId][$course->id] = $r['choice']->du_preference;
-                    $rows[$course->id][$appId] = $r;
+                $pref = $r['choice']->du_preference;
+                if (isset($excluded[$appId]) || ($active->has($appId) && ! $holders->has($appId))) {
+                    continue;
                 }
+                if (($h = $holders[$appId] ?? null) && $pref > $h->choice->du_preference) {
+                    continue; // lower than the seat they already hold
+                }
+                $prefs[$appId][$course->id] = $pref;
+                $rows[$course->id][$appId] = $r;
             }
         }
+        $guaranteed = $holders->groupBy('course_id')->map(fn ($g) => $g->mapWithKeys(fn ($o) => [$o->application_id => $o->seat_category])->all())->all();
 
-        // Student-proposing deferred acceptance.
+        // Student-proposing deferred acceptance. A holder always keeps their current seat if nothing better comes up.
         $order = [];
         foreach ($prefs as $appId => $p) {
             asort($p);
@@ -85,36 +124,45 @@ class AllotmentService
             }
             $courseId = $order[$appId][$next[$appId]++];
             $holding[$courseId][] = $appId;
-            [$keep, $reject] = $this->fill($rows[$courseId], $holding[$courseId], $vacant[$courseId] ?? []);
+            [$keep, $reject] = $this->fill($rows[$courseId], $holding[$courseId], $capacity[$courseId] ?? [], $guaranteed[$courseId] ?? []);
             $holding[$courseId] = array_keys($keep);
             array_push($free, ...$reject);
         }
 
         $assigned = [];
+        $remaining = $capacity;
         foreach ($holding as $courseId => $ids) {
-            [$keep] = $this->fill($rows[$courseId], $ids, $vacant[$courseId] ?? []);
+            [$keep] = $this->fill($rows[$courseId], $ids, $capacity[$courseId] ?? [], $guaranteed[$courseId] ?? []);
             foreach ($keep as $appId => $bucket) {
-                $assigned[$appId] = ['course_id' => $courseId, 'bucket' => $bucket, 'row' => $rows[$courseId][$appId]];
+                $remaining[$courseId][$bucket] = ($remaining[$courseId][$bucket] ?? 0) - 1;
+                $from = $holders[$appId] ?? null;
+                if ($from && $from->course_id === $courseId) {
+                    continue; // stays where they are
+                }
+                $assigned[$appId] = ['course_id' => $courseId, 'bucket' => $bucket, 'row' => $rows[$courseId][$appId], 'from' => $from];
             }
         }
-
-        $remaining = $vacant;
-        foreach ($assigned as $a) {
-            $remaining[$a['course_id']][$a['bucket']]--;
-        }
+        $remaining = array_map(fn ($c) => array_map(fn ($n) => max(0, $n), $c), $remaining);
 
         return ['courses' => $courses, 'assigned' => $assigned, 'lists' => $lists, 'vacant' => $remaining];
     }
 
     /**
-     * Pick who keeps a seat among $ids: General seats by overall rank, then each category bucket.
+     * Pick who keeps a seat among $ids: candidates already holding a seat in this course keep it,
+     * then General seats by overall rank, then each category bucket.
      *
      * @return array{0: array<int,string>, 1: int[]} [appId => bucket], rejected appIds
      */
-    private function fill(array $rows, array $ids, array $capacity): array
+    private function fill(array $rows, array $ids, array $capacity, array $guaranteed = []): array
     {
         usort($ids, fn ($a, $b) => $rows[$a]['rank'] <=> $rows[$b]['rank']);
         $keep = [];
+        foreach ($ids as $id) {
+            if (isset($guaranteed[$id])) {
+                $keep[$id] = $guaranteed[$id];
+                $capacity[$guaranteed[$id]] = ($capacity[$guaranteed[$id]] ?? 0) - 1;
+            }
+        }
         foreach ($capacity as $bucket => $cap) {
             foreach ($ids as $id) {
                 if ($cap <= 0) {
@@ -154,15 +202,26 @@ class AllotmentService
         $offers = DB::transaction(function () use ($preview, $deadline, $by) {
             $round = (int) SeatOffer::max('round') + 1;
 
-            return collect($preview['assigned'])->map(fn ($a) => SeatOffer::create([
-                'round' => $round, 'application_id' => $a['row']['app']->id, 'application_course_id' => $a['row']['choice']->id,
-                'course_id' => $a['course_id'], 'seat_category' => $a['bucket'], 'merit_rank' => $a['row']['rank'],
-                'cuet_part' => $a['row']['cuet'], 'interview_part' => $a['row']['interview'], 'total' => $a['row']['total'],
-                'status' => SeatOffer::OFFERED, 'deadline_at' => $deadline, 'created_by' => $by->id,
-            ]))->values();
+            return collect($preview['assigned'])->map(function ($a) use ($round, $deadline, $by) {
+                $from = $a['from'];
+                // An upgrade replaces the old seat. If the old seat was already accepted, the new one is confirmed straight away.
+                $confirmed = $from?->status === SeatOffer::ACCEPTED;
+                $offer = SeatOffer::create([
+                    'round' => $round, 'application_id' => $a['row']['app']->id, 'application_course_id' => $a['row']['choice']->id,
+                    'course_id' => $a['course_id'], 'seat_category' => $a['bucket'], 'merit_rank' => $a['row']['rank'],
+                    'cuet_part' => $a['row']['cuet'], 'interview_part' => $a['row']['interview'], 'total' => $a['row']['total'],
+                    'status' => $confirmed ? SeatOffer::ACCEPTED : SeatOffer::OFFERED, 'deadline_at' => $deadline, 'created_by' => $by->id,
+                ]);
+                if ($from) {
+                    $offer->forceFill(['upgraded_from_id' => $from->id, 'responded_at' => $confirmed ? now() : null])->save();
+                    $from->forceFill(['status' => SeatOffer::UPGRADED])->save();
+                }
+
+                return $offer;
+            })->values();
         });
 
-        AuditLog::record('allotment.publish', null, ['round' => $offers->first()->round, 'offers' => $offers->count(), 'deadline' => $deadline->toIso8601String()]);
+        AuditLog::record('allotment.publish', null, ['round' => $offers->first()->round, 'offers' => $offers->count(), 'upgrades' => $offers->whereNotNull('upgraded_from_id')->count(), 'deadline' => $deadline->toIso8601String()]);
         foreach ($offers as $o) {
             $o->application->user->notify(new SeatOffered($o));
             $o->forceFill(['emailed_at' => now()])->saveQuietly();

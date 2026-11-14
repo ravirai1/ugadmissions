@@ -29,6 +29,7 @@
     @if ($errors->any())<div class="alert alert-danger no-print">{{ $errors->first() }}</div>@endif
 
     <p>Dear {{ $app->user->name }},</p>
+    @if ($o->upgradedFrom)<div class="alert alert-info">Your seat has been moved up from {{ $o->upgradedFrom->course->name }} to a course you placed higher in your DU preferences.@if ($o->status === 'accepted') You had already accepted your earlier seat, so this seat is confirmed.@endif</div>@endif
     <p>We are pleased to offer you a seat in <strong>{{ $o->course->name }}</strong> at St. Stephen's College for the academic year 2027–28, subject to verification of your original documents and your admission through DU CSAS (UG) 2027.</p>
 
     <table class="table table-sm table-bordered">
@@ -46,7 +47,7 @@
 
     @if ($o->canAccept())
         <div class="border rounded p-3 no-print mb-3">
-            <p class="mb-2">If you do not accept by the deadline, the seat lapses and is offered to the next candidate. Accepting this seat means you will not be considered for your other courses at St. Stephen's.</p>
+            <p class="mb-2">If you do not accept by the deadline, the seat lapses and is offered to the next candidate. Accepting keeps this seat for you. If a seat later opens in a course you placed higher in your DU preferences, you will be moved up automatically and this seat released.</p>
             <form method="POST" action="{{ route('applicant.offer.respond', $o) }}">
                 @csrf
                 <div class="form-check mb-2">

@@ -25,3 +25,5 @@
 /* Compact data tables (interviews, merit, allotment) */
 .table.table-compact > thead > tr > th, .table.table-compact > tbody > tr > td, .table.table-compact > tr > td, .table.table-compact > tr > th { padding: .4rem .55rem !important; height: auto !important; font-size: .85rem; }
 .table.table-compact > thead > tr > th { white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: .8rem; }
+.elig-checks { max-height: 140px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: .3rem; padding: .35rem .6rem; background: #fff; }
+.elig-checks .form-check-inline { min-width: 210px; margin: 0 .5rem .1rem 0; }
