@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Application;
 use App\Models\ApplicationDocument;
 use App\Support\DocumentTypes;
+use App\Support\PhotoRules;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -42,6 +43,9 @@ class DocumentStore
         $mime = $file->getMimeType(); // detected from file contents
         if (str_starts_with($mime, 'image/') && @getimagesize($file->getRealPath()) === false) {
             throw ValidationException::withMessages([$field => 'The image file appears to be damaged.']);
+        }
+        if ($error = PhotoRules::check($type, $file)) {
+            throw ValidationException::withMessages([$field => $error]);
         }
         if ($mime === 'application/pdf' && ! str_starts_with((string) file_get_contents($file->getRealPath(), false, null, 0, 5), '%PDF-')) {
             throw ValidationException::withMessages([$field => 'The PDF file appears to be damaged.']);

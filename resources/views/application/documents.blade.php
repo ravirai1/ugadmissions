@@ -3,6 +3,7 @@
 <div class="form-section">
     <h5>Upload documents</h5>
     <p class="small text-muted">Photograph and signature: JPG/PNG only. Other documents: JPG/PNG or PDF. Choose a file and it uploads immediately; uploading again replaces the earlier file.</p>
+    <div class="mb-3">@include('application._photo-instructions')</div>
     @error('file')<div class="alert alert-danger py-2">{{ $message }}</div>@enderror
     <div class="table-responsive">
         <table class="table align-middle">
@@ -38,6 +39,11 @@
 </div>
 <form method="POST" action="{{ route('application.save', $step) }}" novalidate>
     @csrf
+    <div class="form-check mb-3">
+        <input class="form-check-input @error('photo_declaration') is-invalid @enderror" type="checkbox" name="photo_declaration" id="photo_declaration" value="1" @checked(old('photo_declaration', $app->photo_declared_at))>
+        <label class="form-check-label" for="photo_declaration">I confirm that my photograph was taken within the last 3 months against a plain white background, and that the signature is my own. <span class="req">*</span></label>
+        @error('photo_declaration')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
     @include('application._buttons')
 </form>
 @endsection

@@ -190,11 +190,13 @@ class ApplicationFormTest extends TestCase
         $app = Application::first();
         foreach ($app->requiredDocumentTypes() as $type) {
             $file = in_array($type, ['photo', 'signature'], true)
-                ? UploadedFile::fake()->image("$type.jpg", 200, 200)->size(50)
+                ? $this->goodImage($type)
                 : UploadedFile::fake()->image("$type.png", 600, 800)->size(200);
             $this->actingAs($this->user)->post("/application/documents/$type", ['file' => $file])->assertSessionHasNoErrors();
         }
-        $this->go('documents', [])->assertSessionHasNoErrors();
+        $this->go('documents', [])->assertSessionHasErrors('photo_declaration');
+        $this->go('documents', ['photo_declaration' => '1'])->assertSessionHasNoErrors();
+        $this->assertNotNull(Application::first()->photo_declared_at);
 
         $this->actingAs($this->user)->get('/application/preview')->assertOk()->assertSee('Final Submit');
         $this->actingAs($this->user)->post('/application/submit', [])->assertSessionHasErrors('declaration');
@@ -208,6 +210,28 @@ class ApplicationFormTest extends TestCase
         // locked after submission
         $this->go('basic', $this->basic())->assertForbidden();
         $this->actingAs($this->user)->get('/application/basic')->assertRedirect('/application/preview');
+    }
+
+    public function test_photo_and_signature_rules(): void
+    {
+        $this->fillToCourses();
+        $this->go('courses', ['csas_application_no' => 'DU27X1', 'courses' => [
+            Course::where('code', 'BSC-PHY')->value('id') => ['selected' => 1, 'du_preference' => 1, 'language' => $this->sub('ENG'), 'combination' => 'PCM (Physics, Chemistry, Mathematics)'],
+        ]])->assertSessionHasNoErrors();
+        $row = Application::first()->courses()->first();
+        $this->go('statements', ['statement_college' => str_repeat('a', 250), 'course_statement' => [$row->id => str_repeat('b', 150)]]);
+        $this->actingAs($this->user)->get('/application/documents')->assertOk()->assertSee('last 3 months')->assertSee('Plain white background', false);
+        $up = fn ($type, $file) => $this->actingAs($this->user)->post("/application/documents/$type", ['file' => $file]);
+
+        // black fake image: background not white
+        $up('photo', UploadedFile::fake()->image('p.jpg', 350, 450)->size(50))->assertSessionHasErrors(['file' => 'Photograph: the background must be plain white. Please retake the photo against a white wall or sheet.']);
+        $up('photo', $this->goodImage('photo', [40, 90, 200]))->assertSessionHasErrors('file');       // blue background
+        $up('photo', UploadedFile::fake()->image('p.jpg', 450, 350)->size(50))->assertSessionHasErrors('file'); // landscape
+        $up('photo', UploadedFile::fake()->image('p.jpg', 120, 150)->size(50))->assertSessionHasErrors('file'); // too small
+        $up('photo', $this->goodImage('photo'))->assertSessionHasNoErrors();
+        $up('signature', UploadedFile::fake()->image('s.jpg', 140, 140)->size(20))->assertSessionHasErrors('file');
+        $up('signature', $this->goodImage('signature'))->assertSessionHasNoErrors();
+        $this->get('/documents-required')->assertSee('last 3 months')->assertSee('Parent');
     }
 
     public function test_applicant_cannot_view_another_applicants_document(): void
