@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Scrutiny extends Model
 {
@@ -74,6 +76,29 @@ class Scrutiny extends Model
     public function isOpenForStaff(): bool
     {
         return in_array($this->status, [self::PENDING, self::QUERY], true);
+    }
+
+    public function appeal(): HasOne
+    {
+        return $this->hasOne(ScrutinyAppeal::class);
+    }
+
+    /** Last moment an appeal against this rejection can be made (null when it cannot be appealed). */
+    public function appealDeadline(): ?CarbonInterface
+    {
+        if ($this->status !== self::REJECTED || ! $this->reviewed_at) {
+            return null;
+        }
+
+        return $this->reviewed_at->copy()->addDays((int) config('admissions.appeal_days', 5))->endOfDay();
+    }
+
+    /** The applicant may still appeal: rejected, no appeal yet, and within the appeal period. */
+    public function canAppeal(): bool
+    {
+        $deadline = $this->appealDeadline();
+
+        return $deadline && $deadline->isFuture() && ! ($this->relationLoaded('appeal') ? $this->appeal : $this->appeal()->exists());
     }
 
     public function queries(): HasMany

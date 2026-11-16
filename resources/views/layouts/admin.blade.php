@@ -47,6 +47,8 @@
                     @endif
                     @if ($me->hasRole($R::ADMIN, $R::TFA))
                         {!! $item('admin.scrutiny.overview', 'fa-tasks', 'Scrutiny Overview') !!}
+                        @php $pendingAppeals = \App\Models\ScrutinyAppeal::where('status', 'pending')->count(); @endphp
+                        <li class="nav-item {{ request()->routeIs('admin.appeals.*') ? 'active' : '' }}"><a href="{{ route('admin.appeals.index') }}"><i class="fas fa-balance-scale"></i><p>Appeals</p>@if ($pendingAppeals)<span class="badge badge-danger">{{ $pendingAppeals }}</span>@endif</a></li>
                     @endif
                     @if ($me->hasRole($R::ADMIN, $R::DEPARTMENT, $R::TFA))
                         <li class="nav-item {{ request()->routeIs('admin.scrutiny.index', 'admin.scrutiny.show') && request()->route('type') !== 'religious' ? 'active' : '' }}"><a href="{{ route('admin.scrutiny.index', 'academic') }}"><i class="fas fa-clipboard-check"></i><p>Academic Scrutiny</p></a></li>

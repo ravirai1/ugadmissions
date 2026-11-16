@@ -34,6 +34,13 @@
         <div class="alert alert-secondary">{{ $win::status() }}</div>
     @endif
 
+    @foreach ($scrutinies->filter->canAppeal() as $sc)
+        <div class="alert alert-danger d-flex flex-wrap align-items-center gap-2">
+            <div><strong>Scrutiny rejected:</strong> {{ $sc->type === 'academic' ? $sc->applicationCourse?->course->name : 'Christian category (religious scrutiny)' }}. If you think this is wrong, you can appeal once until <strong>{{ $sc->appealDeadline()->timezone('Asia/Kolkata')->format('d M Y') }}</strong>.</div>
+            <a href="{{ route('applicant.appeal', $sc) }}" class="btn btn-sm btn-danger ms-auto">Appeal</a>
+        </div>
+    @endforeach
+
     @foreach ($openQueries as $q)
         <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
             <div><strong>Action needed:</strong> the scrutiny team has a query about your application ({{ $q->created_at->timezone('Asia/Kolkata')->format('d M') }}).</div>
@@ -141,7 +148,13 @@
                     <ul class="small mb-4 ps-3">
                         @foreach ($scrutinies as $sc)
                             <li>{{ $sc->type === 'academic' ? $sc->applicationCourse?->course->name : 'Religious (Christian category)' }}:
-                                <strong>{{ $sc->status === 'pending' ? 'Under scrutiny' : $sc->statusLabel() }}</strong>@if ($sc->status === 'rejected' && $sc->remarks)<br><span class="text-muted">{{ $sc->remarks }}</span>@endif</li>
+                                <strong>{{ $sc->status === 'pending' ? 'Under scrutiny' : $sc->statusLabel() }}</strong>@if ($sc->status === 'rejected' && $sc->remarks)<br><span class="text-muted">{{ $sc->remarks }}</span>@endif
+                                @if ($sc->appeal)
+                                    <br>Appeal: <a href="{{ route('applicant.appeal', $sc) }}">{{ $sc->appeal->statusLabel() }}</a>
+                                @elseif ($sc->canAppeal())
+                                    <br><a href="{{ route('applicant.appeal', $sc) }}" class="btn btn-sm btn-outline-primary mt-1">Appeal (by {{ $sc->appealDeadline()->timezone('Asia/Kolkata')->format('d M') }})</a>
+                                @endif
+                            </li>
                         @endforeach
                     </ul>
                 @endif

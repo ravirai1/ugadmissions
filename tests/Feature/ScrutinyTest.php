@@ -7,8 +7,11 @@ use App\Models\Application;
 use App\Models\Course;
 use App\Models\Department;
 use App\Models\Scrutiny;
+use App\Models\ScrutinyAppeal;
 use App\Models\ScrutinyQuery;
 use App\Models\User;
+use App\Notifications\AppealDecided;
+use App\Notifications\AppealReceived;
 use App\Notifications\QueryRaised;
 use App\Notifications\QueryReminder;
 use App\Services\Payments\GatewayResult;
@@ -316,5 +319,81 @@ class ScrutinyTest extends TestCase
         $this->assertTrue($app->religiousCleared());
 
         $this->actingAs($this->user)->get('/applicant/dashboard')->assertSee('Not accepted – treated as General');
+    }
+
+    private function rejected(): array
+    {
+        $app = $this->paid();
+        $s = $this->academic($app, 'BSC-PHY');
+        $tfa = $this->staff(Roles::TFA);
+        $this->as($tfa)->post("$this->base/scrutiny/item/{$s->id}/decide", ['action' => 'rejected', 'remarks' => 'Class 12 marksheet is not genuine.'])->assertSessionHasNoErrors();
+
+        return [$app, $s->refresh(), $tfa];
+    }
+
+    public function test_applicant_appeals_a_rejection_once_and_tfa_admin_accepts_it(): void
+    {
+        [$app, $s, $tfa] = $this->rejected();
+
+        $this->actingAs($this->user)->get('/applicant/dashboard')->assertOk()->assertSee('Scrutiny rejected')->assertSee(route('applicant.appeal', $s), false);
+        $this->actingAs($this->user)->get("/applicant/appeal/{$s->id}")->assertOk()->assertSee('Class 12 marksheet is not genuine.')->assertSee('Submit appeal');
+
+        // another applicant cannot see or appeal it
+        $other = User::factory()->create();
+        $this->actingAs($other)->get("/applicant/appeal/{$s->id}")->assertNotFound();
+
+        $this->actingAs($this->user)->post("/applicant/appeal/{$s->id}", ['reason' => 'Too short', 'declaration' => '1'])->assertSessionHasErrors('reason');
+        $this->actingAs($this->user)->post("/applicant/appeal/{$s->id}", [
+            'reason' => 'My marksheet is genuine. I attach the verified copy issued by CBSE with its QR code, which can be checked online.',
+            'declaration' => '1',
+            'files' => [UploadedFile::fake()->image('verified.png', 800, 1000)->size(300)],
+        ])->assertRedirect(route('applicant.dashboard'));
+
+        $appeal = ScrutinyAppeal::first();
+        $this->assertSame('pending', $appeal->status);
+        $this->assertSame('Class 12 marksheet is not genuine.', $appeal->rejection_remarks);
+        $this->assertSame(1, $appeal->attachments()->count());
+        Notification::assertSentTo($tfa, AppealReceived::class);
+
+        // only one appeal
+        $this->actingAs($this->user)->post("/applicant/appeal/{$s->id}", ['reason' => str_repeat('again ', 20), 'declaration' => '1'])->assertForbidden();
+        $this->actingAs($this->user)->get('/applicant/dashboard')->assertSee('Appeal: ')->assertSee('Under review')->assertDontSee('Scrutiny rejected:');
+
+        // admin can view, only the TFA admin decides
+        $admin = $this->staff(Roles::ADMIN);
+        $this->as($admin)->get("$this->base/appeals")->assertOk()->assertSee($app->application_no);
+        $this->as($admin)->get("$this->base/appeals/{$appeal->id}")->assertOk()->assertDontSee('Save decision');
+        $this->as($admin)->post("$this->base/appeals/{$appeal->id}/decide", ['outcome' => 'allowed', 'remarks' => 'Verified on the CBSE site.'])->assertForbidden();
+        $this->as($this->staff(Roles::DEPARTMENT, $this->dept('BSC-PHY')))->get("$this->base/appeals")->assertForbidden();
+
+        $this->as($tfa)->get("$this->base/appeals/{$appeal->id}")->assertOk()->assertSee('Save decision')->assertSee('verified copy issued by CBSE');
+        $this->as($tfa)->post("$this->base/appeals/{$appeal->id}/decide", ['outcome' => 'allowed'])->assertSessionHasErrors('remarks');
+        $this->as($tfa)->post("$this->base/appeals/{$appeal->id}/decide", ['outcome' => 'allowed', 'remarks' => 'Verified on the CBSE site.'])->assertSessionHasNoErrors();
+
+        $this->assertSame('allowed', $appeal->refresh()->status);
+        $this->assertSame('pending', $s->refresh()->status, 'back in the scrutiny queue');
+        $this->assertTrue($s->reply_received);
+        Notification::assertSentTo($this->user, AppealDecided::class, fn ($n) => str_contains(implode(' ', $n->toMail($this->user)->introLines), 'accepted'));
+        $this->as($this->staff(Roles::DEPARTMENT, $this->dept('BSC-PHY')))->get("$this->base/scrutiny/item/{$s->id}")->assertOk()->assertSee('Appeal accepted, scrutinise again');
+
+        // cannot be decided twice
+        $this->as($tfa)->post("$this->base/appeals/{$appeal->id}/decide", ['outcome' => 'upheld', 'remarks' => 'Changed my mind.'])->assertSessionHasErrors('outcome');
+    }
+
+    public function test_upheld_appeal_is_final_and_appeal_period_ends(): void
+    {
+        [$app, $s, $tfa] = $this->rejected();
+        $this->actingAs($this->user)->post("/applicant/appeal/{$s->id}", ['reason' => str_repeat('Please review my religious documents again. ', 2), 'declaration' => '1'])->assertRedirect();
+        $appeal = ScrutinyAppeal::first();
+        $this->as($tfa)->post("$this->base/appeals/{$appeal->id}/decide", ['outcome' => 'upheld', 'remarks' => 'The marksheet does not match the board record.'])->assertSessionHasNoErrors();
+        $this->assertSame('rejected', $s->refresh()->status);
+        $this->actingAs($this->user)->get("/applicant/appeal/{$s->id}")->assertOk()->assertSee('Rejected (rejection upheld)')->assertSee('This decision is final.')->assertSee('does not match the board record');
+
+        // a second rejection on another record, appealed too late
+        $s2 = $this->academic($app, 'BA-ECO');
+        $this->as($tfa)->post("$this->base/scrutiny/item/{$s2->id}/decide", ['action' => 'rejected', 'remarks' => 'Not eligible.'])->assertSessionHasNoErrors();
+        $this->travel(config('admissions.appeal_days') + 1)->days();
+        $this->actingAs($this->user)->get("/applicant/appeal/{$s2->id}")->assertForbidden();
+        $this->actingAs($this->user)->get('/applicant/dashboard')->assertDontSee('Scrutiny rejected:');
     }
 }

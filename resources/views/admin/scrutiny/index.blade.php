@@ -57,7 +57,7 @@
                         @endif
                         <td>
                             <span class="badge badge-{{ $badge[$s->status] ?? 'secondary' }}">{{ $s->statusLabel() }}</span>
-                            @if ($s->reply_received)<span class="badge badge-primary">Reply received</span>@endif
+                            @if ($s->reply_received)<span class="badge badge-primary">{{ $s->appeal?->status === 'allowed' ? 'Appeal accepted' : 'Reply received' }}</span>@endif
                         </td>
                         <td class="small">{{ $s->reviewer?->name ?? '–' }}</td>
                         <td><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.scrutiny.show', $s) }}">{{ $s->isDecided() ? 'View' : 'Scrutinise' }}</a></td>

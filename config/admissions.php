@@ -9,6 +9,8 @@ return [
 
     // Non-obvious URL prefix for the staff login and panel.
     'admin_path' => env('ADMIN_PATH', 'ssc-staff'),
+    // Days after a scrutiny rejection in which the applicant can appeal (to the TFA admin).
+    'appeal_days' => (int) env('APPEAL_DAYS', 5),
     'activity_log_days' => (int) env('ACTIVITY_LOG_DAYS', 400),
 
     // Failed-login IP blocking.

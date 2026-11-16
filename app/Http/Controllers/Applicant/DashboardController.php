@@ -42,7 +42,7 @@ class DashboardController extends Controller
             'payments' => $app ? $app->payments()->with('events')->get() : collect(),
             'queries' => $queries,
             'openQueries' => $queries->where('status', ScrutinyQuery::OPEN),
-            'scrutinies' => $app ? $app->scrutinies()->with('applicationCourse.course')->get() : collect(),
+            'scrutinies' => $app ? $app->scrutinies()->with('applicationCourse.course', 'appeal')->get() : collect(),
             'progress' => (int) round(min($done, $total) / $total * 100),
         ]);
     }
