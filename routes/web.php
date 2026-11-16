@@ -59,6 +59,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/call-letter/{letter}', [Applicant\InterviewController::class, 'callLetter'])->name('call-letter')->whereNumber('letter');
         Route::get('/offer/{offer}', [Applicant\InterviewController::class, 'offer'])->name('offer')->whereNumber('offer');
         Route::post('/offer/{offer}', [Applicant\InterviewController::class, 'respond'])->middleware('throttle:app-submit')->name('offer.respond')->whereNumber('offer');
+        Route::get('/appeal/{scrutiny}', [Applicant\AppealController::class, 'create'])->name('appeal')->whereNumber('scrutiny');
+        Route::post('/appeal/{scrutiny}', [Applicant\AppealController::class, 'store'])->middleware('throttle:app-upload')->name('appeal.store')->whereNumber('scrutiny');
     });
 
     Route::middleware('verified')->prefix('application')->name('application.')->controller(Applicant\ApplicationController::class)->group(function () {
@@ -158,6 +160,13 @@ Route::prefix(config('admissions.admin_path'))->name('admin.')->group(function (
                 Route::post('/queries/{query}/close', 'closeQuery')->name('query.close')->whereNumber('query');
                 Route::post('/item/{scrutiny}/reopen', 'reopen')->middleware('role:'.Roles::ADMIN.','.Roles::TFA)->name('reopen')->whereNumber('scrutiny');
             });
+
+        // Appeals against scrutiny rejections: admin can view, the TFA admin decides
+        Route::middleware('role:'.Roles::ADMIN.','.Roles::TFA)->prefix('appeals')->name('appeals.')->controller(Admin\AppealController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/{appeal}', 'show')->name('show')->whereNumber('appeal');
+            Route::post('/{appeal}/decide', 'decide')->name('decide')->whereNumber('appeal');
+        });
 
         // Master data and fees (admin)
         Route::middleware('role:'.Roles::ADMIN)->group(function () {

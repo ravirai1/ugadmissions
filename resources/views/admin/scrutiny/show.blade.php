@@ -9,7 +9,8 @@
 @endphp
 <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
     <span class="badge badge-{{ $badge[$s->status] ?? 'secondary' }}">{{ $s->statusLabel() }}</span>
-    @if ($s->reply_received)<span class="badge badge-primary">Applicant replied</span>@endif
+    @if ($s->reply_received)<span class="badge badge-primary">{{ $s->appeal?->status === 'allowed' ? 'Appeal accepted, scrutinise again' : 'Applicant replied' }}</span>@endif
+    @if ($s->appeal)<a href="{{ route('admin.appeals.show', $s->appeal) }}" class="badge badge-warning">Appeal: {{ $s->appeal->statusLabel() }}</a>@endif
     <span class="small text-muted">{{ $user->name }} · CUET {{ $user->cuet_no }} · {{ $app->gender }}</span>
     @if ($s->reviewed_at)<span class="small text-muted">· last action by {{ $s->reviewer?->name }} on {{ $s->reviewed_at->timezone('Asia/Kolkata')->format('d M Y h:i A') }}</span>@endif
     <a href="{{ route('admin.scrutiny.index', $s->type) }}" class="btn btn-outline-secondary btn-sm ms-auto">Back to queue</a>

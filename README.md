@@ -48,6 +48,7 @@ Desks in the panel:
   - Apache: `public/.htaccess` already refuses any `.php` file other than `index.php` and all hidden files. On **nginx** add the same: `location ~ /\.(?!well-known) { deny all; }` and `location ~ \.php$ { if ($uri != "/index.php") { return 403; } ... }`.
   - Changing or resetting a password signs that account out on every other device. Applicants must agree to the Privacy Policy and Terms at registration (DPDP Act, 2023); the time and IP are stored.
   - Applicant and staff activity logs (separate tables) are under Admin → Security; they and attack records are pruned after `ACTIVITY_LOG_DAYS` (default 400).
+  - Appeals: an applicant can appeal a scrutiny rejection once within `APPEAL_DAYS` (default 5) days; the TFA admin decides under Admin → Appeals (accept = back to scrutiny, reject = final).
   - The DU CSAS portal link shown to applicants is `DU_CSAS_URL` (default `https://admission.uod.ac.in`).
 
 ## Tests
