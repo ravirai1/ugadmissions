@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\AuditLog;
 use App\Models\Course;
 use App\Models\SeatOffer;
+use App\Models\Setting;
 use App\Notifications\SeatOffered;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -34,7 +35,7 @@ class AllotmentService
     /** Default PwBD supernumerary seats as a percentage of a course's intake (used when no number is set for the course). */
     public static function pwbdPercent(): float
     {
-        return (float) \App\Models\Setting::get('seats.pwbd_percent', 5);
+        return (float) Setting::get('seats.pwbd_percent', 5);
     }
 
     /** PwBD supernumerary seats for an intake: the number set for the course, or the default percentage rounded up. */

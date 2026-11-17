@@ -21,7 +21,7 @@ class PaymentReceived extends Notification
         $mail = (new MailMessage)
             ->subject("Payment received ({$p->receipt_no}) – St. Stephen's College UG Admissions 2027")
             ->greeting('Dear '.$notifiable->name.',')
-            ->line("We have received your payment of **₹".number_format((float) $p->amount, 2)."** for {$p->purposeLabel()}.")
+            ->line('We have received your payment of **₹'.number_format((float) $p->amount, 2)."** for {$p->purposeLabel()}.")
             ->line("Receipt no.: **{$p->receipt_no}** · Order no.: {$p->order_no} · SBI ePay ref.: ".($p->gateway_ref ?: '–'));
 
         if ($p->is_duplicate) {

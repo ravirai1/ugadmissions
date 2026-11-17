@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\District;
 use App\Models\State;
 use App\Models\User;
+use App\Services\AllotmentService;
 use App\Services\FeeCalculator;
 use App\Support\Roles;
 use Database\Seeders\MasterDataSeeder;
@@ -144,8 +145,8 @@ class AdminPortalTest extends TestCase
             $eco->id => ['UR' => 10, 'PWBD' => 0],
         ]])->assertSessionHasNoErrors();
         $this->assertSame(['UR' => 20, 'OBC' => 10, 'CNI' => 5], $course->refresh()->seats);
-        $this->assertSame(['UR' => 20, 'OBC' => 10, 'CNI' => 5, 'PWBD' => 2], \App\Services\AllotmentService::seats($course), '5% of 35, rounded up, as extra seats');
-        $this->assertSame(['UR' => 10], \App\Services\AllotmentService::seats($eco->refresh()), 'PwBD set to 0 for this course');
+        $this->assertSame(['UR' => 20, 'OBC' => 10, 'CNI' => 5, 'PWBD' => 2], AllotmentService::seats($course), '5% of 35, rounded up, as extra seats');
+        $this->assertSame(['UR' => 10], AllotmentService::seats($eco->refresh()), 'PwBD set to 0 for this course');
         $this->as($this->staff(Roles::ACCOUNTS))->get("$this->base/seats")->assertForbidden();
 
         $this->as($this->staff(Roles::DEPARTMENT))->get("$this->base/master/courses")->assertForbidden();

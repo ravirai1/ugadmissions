@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CallLetter extends Model
 {
     public const PRESENT = 'present';
+
     public const ABSENT = 'absent';
 
     protected $fillable = ['application_id', 'application_course_id', 'course_id', 'interview_date', 'reporting_time', 'venue', 'qr_token', 'issued_by'];
