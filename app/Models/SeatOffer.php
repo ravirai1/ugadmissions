@@ -8,9 +8,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SeatOffer extends Model
 {
     public const OFFERED = 'offered';
+
     public const ACCEPTED = 'accepted';
+
     public const DECLINED = 'declined';
+
     public const LAPSED = 'lapsed';
+
     public const UPGRADED = 'upgraded';
 
     public const STATUSES = [self::OFFERED => 'Offered', self::ACCEPTED => 'Accepted', self::DECLINED => 'Declined', self::LAPSED => 'Lapsed', self::UPGRADED => 'Moved to higher preference'];

@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ScrutinyQuery extends Model
 {
     public const OPEN = 'open';
+
     public const ANSWERED = 'answered';
+
     public const CLOSED = 'closed';
 
     protected $fillable = ['application_id', 'scrutiny_id', 'raised_by', 'message', 'document_types', 'status', 'token_hash', 'expires_at', 'reply', 'replied_at', 'reply_ip', 'reminded_at', 'reminder_count', 'closed_by', 'closed_at'];

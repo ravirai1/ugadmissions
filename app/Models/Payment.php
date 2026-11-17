@@ -10,12 +10,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Payment extends Model
 {
     public const INITIATED = 'initiated';
+
     public const PENDING = 'pending';
+
     public const SUCCESS = 'success';
+
     public const FAILED = 'failed';
 
     public const APPLICATION = 'application';
+
     public const ADD_COURSE = 'add_course';
+
     public const ADD_RESIDENCE = 'add_residence';
 
     public const PURPOSES = [

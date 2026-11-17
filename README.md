@@ -4,7 +4,7 @@ Laravel 13 admissions portal: applicant website (Weldork theme) and staff panel 
 See [docs/PLAN.md](docs/PLAN.md) for the full plan and progress.
 
 ## Requirements
-PHP 8.3+, Composer, MySQL 8 (or MariaDB 10.6+), a mail server (SMTP) for verification and OTP emails.
+PHP 8.5 (with the gd, pdo_mysql, mbstring, openssl, fileinfo and intl extensions), Composer, MySQL 8 (or MariaDB 10.6+), a mail server (SMTP) for verification and OTP emails.
 
 ## Setup
 ```bash

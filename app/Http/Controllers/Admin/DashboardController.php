@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\BlockedIp;
 use App\Models\LoginAttempt;
 use App\Models\Payment;
+use App\Models\Scrutiny;
 use App\Models\User;
 use App\Services\AdmissionStats;
 use App\Support\ApplicationAccess;
@@ -42,7 +43,7 @@ class DashboardController extends Controller
                 ],
                 'pwbdWise' => $this->stats->pwbdWise($scope),
                 'daily' => $this->stats->daily(),
-                'scrutiny' => collect(['academic', 'religious'])->mapWithKeys(fn ($t) => [$t => \App\Models\Scrutiny::where('type', $t)
+                'scrutiny' => collect(['academic', 'religious'])->mapWithKeys(fn ($t) => [$t => Scrutiny::where('type', $t)
                     ->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->all()])->all(),
                 'payments' => [
                     'byPurpose' => $this->stats->payments(),

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Rules\StrongPassword;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class PasswordController extends Controller
 {

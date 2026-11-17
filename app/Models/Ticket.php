@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Ticket extends Model
 {
     public const OPEN = 'open';
+
     public const ANSWERED = 'answered';
+
     public const CLOSED = 'closed';
 
     public const STATUSES = [self::OPEN => 'Open', self::ANSWERED => 'Answered', self::CLOSED => 'Closed'];

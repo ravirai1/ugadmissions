@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 class Subject extends Model
 {
     public const LANGUAGE = 'language';
+
     public const DOMAIN = 'domain';
+
     public const GENERAL = 'general';
 
     protected $fillable = ['code', 'name', 'type', 'is_active', 'sort'];

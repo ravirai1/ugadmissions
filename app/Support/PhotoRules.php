@@ -66,7 +66,6 @@ final class PhotoRules
         try {
             return $type === 'photo' ? self::photoBackground($img, $w, $h) : self::signatureBackground($img, $w, $h);
         } finally {
-            imagedestroy($img);
         }
     }
 
