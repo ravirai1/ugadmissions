@@ -114,7 +114,6 @@ trait FillsApplication
         }
         $path = tempnam(sys_get_temp_dir(), 'img').'.jpg';
         imagejpeg($img, $path, 95);
-        imagedestroy($img);
 
         return new UploadedFile($path, "$type.jpg", 'image/jpeg', null, true);
     }
